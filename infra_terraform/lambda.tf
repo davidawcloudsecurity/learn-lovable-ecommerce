@@ -25,8 +25,6 @@ resource "aws_lambda_function" "api" {
   timeout         = 30
   source_code_hash = filebase64sha256("../lambda/lambda-api.zip")
 
-  depends_on = [null_resource.lambda_zip]
-
   environment {
     variables = {
       POSTGRES_HOST     = aws_db_instance.postgres.endpoint
@@ -41,7 +39,10 @@ resource "aws_lambda_function" "api" {
     security_group_ids = [aws_security_group.lambda_sg.id]
   }
 
-  depends_on = [aws_cloudwatch_log_group.lambda_logs]
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_logs,
+    null_resource.lambda_zip
+  ]
 }
 
 # IAM Role for Lambda
