@@ -15,15 +15,24 @@ resource "null_resource" "lambda_zip" {
   }
 }
 
+# Data source to calculate hash after zip is created
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_dir  = "../lambda"
+  output_path = "../lambda/lambda-api.zip"
+  excludes    = ["lambda-api.zip", "node_modules"]
+  depends_on  = [null_resource.lambda_zip]
+}
+
 # Lambda Function
 resource "aws_lambda_function" "api" {
-  filename         = "../lambda/lambda-api.zip"
+  filename         = data.archive_file.lambda_zip.output_path
   function_name    = "ecommerce-api"
   role            = aws_iam_role.lambda_role.arn
   handler         = "lambda.handler"
   runtime         = "nodejs18.x"
   timeout         = 30
-  source_code_hash = filebase64sha256("../lambda/lambda-api.zip")
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
     variables = {
