@@ -43,7 +43,7 @@ jobs:
           terraform fmt
           terraform validate
           terraform plan
-          working-directory: infra_terraform
+        working-directory: infra_terraform
 
       - name: Git Config
         run: |
@@ -72,5 +72,5 @@ jobs:
           git commit -m "random-${COMMIT_HASH}"
           # Push the changes to the 'destroy/main' branch
           git push origin destroy/main
-          working-directory: infra_terraform
+        working-directory: infra_terraform
           
