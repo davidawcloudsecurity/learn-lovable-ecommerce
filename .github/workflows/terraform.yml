@@ -68,7 +68,8 @@ jobs:
           if [ -f terraform.tfstate ]; then
             mv terraform.tfstate state/
           fi
-          git add state main.tf variables.tf
+          git status
+          git add state main.tf
           git commit -m "random-${COMMIT_HASH}"
           # Push the changes to the 'destroy/main' branch
           git push origin destroy/main
