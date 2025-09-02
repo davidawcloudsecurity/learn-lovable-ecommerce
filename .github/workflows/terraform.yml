@@ -3,7 +3,10 @@ name: learn-lovable-ecommerce-apply
 
 # Controls when the action will run. Invokes the workflow on push events but only for the main branch
 on:
-  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 env:
   
@@ -38,6 +41,8 @@ jobs:
         run: |
           ls -lah
           cd infra_terraform
+          pwd
+          ls -lah
           terraform init
   
       # Checks that all Terraform configuration files adhere to a canonical format
