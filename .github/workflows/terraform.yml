@@ -1,0 +1,83 @@
+# This is a basic workflow to help you get started with Actions
+name: Connect to an AWS role from a GitHub repository
+
+# Controls when the action will run. Invokes the workflow on push events but only for the main branch
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  
+  AWS_REGION : "us-east-1" #Change to reflect your Region
+
+# Permission can be added at job level or workflow level    
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: read    # This is required for actions/checkout
+jobs:
+  AssumeRoleAndCallIdentity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::762595429056:role/GithubActions #change to reflect your IAM role’s ARN
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+      # Hello from AWS: WhoAmI
+      - name: Sts GetCallerIdentity
+        run: |
+          aws sts get-caller-identity
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        
+      # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+      - name: Terraform Init
+        run: terraform init
+  
+      # Checks that all Terraform configuration files adhere to a canonical format
+      - name: Terraform Format
+        run: terraform fmt -check
+        
+      - name: Terraform Validate
+        run: terraform validate
+
+      # Generates an execution plan for Terraform
+      - name: Terraform Plan
+        run: |
+          terraform plan -input=false
+          ls -lah
+          echo test > test.txt
+
+      - name: Git Config
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/davidawcloudsecurity/learn-lovable-ecommerce.git                   
+          # Get the latest commit hash
+          COMMIT_HASH=$(git rev-parse --short HEAD)          
+          
+          # Fetch the latest changes from the remote 'destroy/main' branch
+          git status
+          echo "git fetch"
+          git fetch origin destroy/main
+          git add main.tf
+          git commit -m "random-${COMMIT_HASH}"
+          cp main.tf main.tf.origin
+          cp variables.tf variables.tf.origin
+          echo "git checkout"
+          git checkout destroy/main
+          echo "git merge"
+          git merge origin/destroy/main
+          mv main.tf.origin main.tf
+          mv variables.tf.origin variables.tf
+          mv terraform.tfstate state
+          git add state main.tf variables.tf
+          git commit -m "random-${COMMIT_HASH}"
+          # Push the changes to the 'destroy/main' branch
+          git push origin destroy/main
