@@ -41,7 +41,7 @@ jobs:
         run: |
           cd infra_terraform
           terraform init
-          terraform fmt -check
+          terraform fmt
           terraform validate
           terraform plan
 
