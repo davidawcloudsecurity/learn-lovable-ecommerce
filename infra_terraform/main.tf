@@ -480,7 +480,7 @@ resource "aws_launch_template" "wordpress" {
   EOF
   )
 }
-*/
+
 # MYSQL LAUNCH TEMPLATE
 resource "aws_launch_template" "mysql" {
   name_prefix   = "mysql-"
@@ -596,6 +596,7 @@ nohup node server.js > /var/log/node-app.log 2>&1 &
 	EOF
 )
 }
+*/
 /*
 # WORDPRESS AUTOSCALING GROUP
 resource "aws_autoscaling_group" "wordpress" {
@@ -653,7 +654,7 @@ resource "aws_db_instance" "postgres" {
     Name = "postgres-instance"
   }
 }
-
+/*
 # MYSQL AUTOSCALING GROUP
 resource "aws_autoscaling_group" "mysql" {
   name                = "mysql-asg"
@@ -682,7 +683,7 @@ resource "aws_autoscaling_group" "mysql" {
     create_before_destroy = true
   }
 }
-
+*/
 resource "aws_s3_bucket" "product_images" {
   bucket = "learn-lovable-product-images-${random_id.suffix.hex}" # Use unique suffix to avoid bucket name conflicts
 
