@@ -13,6 +13,18 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "create_new_role" {
+  type        = bool
+  default     = false
+  description = "Whether to create new role or use existing"
+}
+
+variable "existing_role_name" {
+  type        = string
+  default     = "lambda-execution-role"
+  description = "Name of existing role if not creating new one"
+}
+
 # Add this data source to get the current AWS region
 data "aws_region" "current" {}
 
