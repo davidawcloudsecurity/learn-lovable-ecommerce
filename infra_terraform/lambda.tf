@@ -65,7 +65,7 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
 resource "aws_lambda_function" "api" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "ecommerce-api"
-  role            = local.lambda_role.arn
+  role            = local.lambda_role_arn
   handler         = "lambda.handler"
   runtime         = "nodejs16.x"
   timeout         = 30
