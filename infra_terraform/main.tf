@@ -718,24 +718,38 @@ resource "null_resource" "upload_images_to_s3" {
   provisioner "local-exec" {
     command = <<-EOT
       pwd
-      # Check if the images directory exists
-      if [ -d "../public/assets/images" ]; then
-        # Upload all files from public/assets/images to S3
-        aws s3 cp ../public/assets/images/ s3://${aws_s3_bucket.product_images.bucket}/assets/images/ --recursive
-        echo "Images uploaded successfully to S3 bucket: ${aws_s3_bucket.product_images.bucket}"
-      else
-        echo "Images directory not found in the repository"
-      fi
-      sudo yum update -y
-      curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-      sudo yum install -y nodejs
-      cd /home
-      sudo git clone https://github.com/davidawcloudsecurity/learn-lovable-borderless-trade-sphere.git
-      cd learn-lovable-borderless-trade-sphere/
-      sudo npm i;sudo npm run build;
-      aws s3 cp dist s3://${aws_s3_bucket.product_images.bucket} --recursive
-      cd /home
-      sudo rm -rf learn-lovable-borderless-trade-sphere
+	# First, check if bucket has content
+	if ! aws s3 ls "s3://${aws_s3_bucket.product_images.bucket}/assets/images/" &>/dev/null; then
+	  # Only upload if bucket is empty
+	  if [ -d "../public/assets/images" ]; then
+		aws s3 sync ../public/assets/images/ s3://${aws_s3_bucket.product_images.bucket}/assets/images/ \
+		  --no-progress \
+		  --size-only
+		echo "Initial images upload completed"
+	  fi
+	else
+	  echo "Images already exist in bucket - skipping upload"
+	fi
+	
+	# For the website build and deploy
+	if ! aws s3 ls "s3://${aws_s3_bucket.product_images.bucket}/index.html" &>/dev/null; then
+	  # Only build and deploy if index.html doesn't exist
+	  sudo yum update -y
+	  curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+	  sudo yum install -y nodejs
+	  cd /home
+	  sudo git clone https://github.com/davidawcloudsecurity/learn-lovable-borderless-trade-sphere.git
+	  cd learn-lovable-borderless-trade-sphere/
+	  sudo npm i
+	  sudo npm run build
+	  aws s3 sync dist s3://${aws_s3_bucket.product_images.bucket} \
+		--no-progress \
+		--size-only
+	  cd /home
+	  sudo rm -rf learn-lovable-borderless-trade-sphere
+	else
+	  echo "Website already deployed - skipping build and deploy"
+	fi
     EOT
   }
   # Trigger re-execution if bucket changes
