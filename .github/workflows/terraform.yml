@@ -41,6 +41,7 @@ jobs:
           terraform fmt
           terraform validate
           terraform plan
+          terraform apply --auto-approve
         working-directory: infra_terraform
 
       - name: Git Config
