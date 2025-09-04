@@ -25,6 +25,23 @@ variable "existing_role_name" {
   description = "Name of existing role if not creating new one"
 }
 
+variable "existing_instance_profile" {
+  type        = string
+  default     = "ec2_ssm_role"
+  description = "Name of existing role if not creating new one"
+}
+
+# Check if role exists
+data "aws_iam_role" "existing_instance_profile" {
+  count = var.create_new_role ? 0 : 1
+  name  = "ec2_ssm_role"
+}
+
+# Use local to select the right role ARN
+locals {
+  instance_profile_arn = var.create_new_role ? aws_iam_role.ec2_ssm_role.name[0].arn : data.aws_iam_role.existing_instance_profile[0].arn
+}
+
 # Add this data source to get the current AWS region
 data "aws_region" "current" {}
 
@@ -324,6 +341,7 @@ resource "aws_security_group" "private_db" {
 
 # IAM Role for EC2 Instances
 resource "aws_iam_role" "ec2_ssm_role" {
+  count = var.create_new_role ? 1 : 0
   name = "ec2_ssm_role"
 
   assume_role_policy = jsonencode({
@@ -342,12 +360,12 @@ resource "aws_iam_role" "ec2_ssm_role" {
 
 resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  role       = aws_iam_role.ec2_ssm_role.name
+  role = local.aws_iam_role.instance_profile_arn
 }
 
 resource "aws_iam_instance_profile" "ec2_ssm_profile" {
   name = "ec2_ssm_profile"
-  role = aws_iam_role.ec2_ssm_role.name
+  role = local.aws_iam_role.instance_profile_arn
 }
 
 # ALB
