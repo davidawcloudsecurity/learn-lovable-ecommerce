@@ -15,6 +15,12 @@ resource "null_resource" "lambda_zip" {
   }
 }
 
+# Check if role exists
+data "aws_iam_role" "existing_role" {
+  count = var.create_new_role ? 0 : 1
+  name  = "lambda-execution-role"
+}
+
 # Data source to calculate hash after zip is created
 data "archive_file" "lambda_zip" {
   type        = "zip"
@@ -56,7 +62,8 @@ resource "aws_lambda_function" "api" {
 
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
-  name = "lambda-execution-role"
+  count = var.create_new_role ? 1 : 0
+  name  = "lambda-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -72,9 +79,15 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
+# Use local to select the right role ARN
+locals {
+  lambda_role_arn = var.create_new_role ? aws_iam_role.lambda_role[0].arn : data.aws_iam_role.existing_role[0].arn
+}
+
 # IAM Policy for Lambda
 resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
-  role       = aws_iam_role.lambda_role.name
+  count      = var.create_new_role ? 1 : 0
+  role       = aws_iam_role.lambda_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
