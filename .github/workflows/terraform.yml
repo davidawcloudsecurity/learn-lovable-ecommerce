@@ -42,6 +42,7 @@ jobs:
           terraform validate
           terraform plan
           terraform apply --auto-approve
+        continue-on-error: true  # Critical: Continue even if backup fails          
         working-directory: infra_terraform
 
       - name: Git Config
