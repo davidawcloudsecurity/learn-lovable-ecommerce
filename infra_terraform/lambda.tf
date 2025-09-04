@@ -30,36 +30,6 @@ data "archive_file" "lambda_zip" {
   depends_on  = [null_resource.lambda_zip]
 }
 
-# Lambda Function
-resource "aws_lambda_function" "api" {
-  filename         = data.archive_file.lambda_zip.output_path
-  function_name    = "ecommerce-api"
-  role            = local.lambda_role.arn
-  handler         = "lambda.handler"
-  runtime         = "nodejs16.x"
-  timeout         = 30
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
-
-  environment {
-    variables = {
-      POSTGRES_HOST     = aws_db_instance.postgres.endpoint
-      POSTGRES_DB       = aws_db_instance.postgres.db_name
-      POSTGRES_USER     = aws_db_instance.postgres.username
-      POSTGRES_PASSWORD = aws_db_instance.postgres.password
-    }
-  }
-
-  vpc_config {
-    subnet_ids         = [aws_subnet.private_app.id]
-    security_group_ids = [aws_security_group.lambda_sg.id]
-  }
-
-  depends_on = [
-    aws_cloudwatch_log_group.lambda_logs,
-    null_resource.lambda_zip
-  ]
-}
-
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
   count = var.create_new_role ? 1 : 0
@@ -89,6 +59,36 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
   count      = var.create_new_role ? 1 : 0
   role       = aws_iam_role.lambda_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+# Lambda Function
+resource "aws_lambda_function" "api" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "ecommerce-api"
+  role            = locals.lambda_role.arn
+  handler         = "lambda.handler"
+  runtime         = "nodejs16.x"
+  timeout         = 30
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      POSTGRES_HOST     = aws_db_instance.postgres.endpoint
+      POSTGRES_DB       = aws_db_instance.postgres.db_name
+      POSTGRES_USER     = aws_db_instance.postgres.username
+      POSTGRES_PASSWORD = aws_db_instance.postgres.password
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_app.id]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_logs,
+    null_resource.lambda_zip
+  ]
 }
 
 # Security Group for Lambda
