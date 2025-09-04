@@ -34,7 +34,7 @@ data "archive_file" "lambda_zip" {
 resource "aws_lambda_function" "api" {
   filename         = data.archive_file.lambda_zip.output_path
   function_name    = "ecommerce-api"
-  role            = aws_iam_role.lambda_role.arn
+  role            = local.lambda_role.arn
   handler         = "lambda.handler"
   runtime         = "nodejs16.x"
   timeout         = 30
