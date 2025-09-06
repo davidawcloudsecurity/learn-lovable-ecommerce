@@ -73,7 +73,7 @@ resource "aws_lambda_function" "api" {
 
   environment {
     variables = {
-      POSTGRES_HOST     = aws_db_instance.postgres..address
+      POSTGRES_HOST     = aws_db_instance.postgres.address
       POSTGRES_DB       = aws_db_instance.postgres.db_name
       POSTGRES_USER     = aws_db_instance.postgres.username
       POSTGRES_PASSWORD = aws_db_instance.postgres.password
