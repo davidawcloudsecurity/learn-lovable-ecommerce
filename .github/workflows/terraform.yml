@@ -53,7 +53,7 @@ jobs:
           COMMIT_HASH=$(git rev-parse --short HEAD)          
           
           # Fetch the latest changes from the remote 'destroy/main' branch
-          git status; git stash
+          git status
           echo "git fetch"
           git fetch origin destroy/main
           git add main.tf
