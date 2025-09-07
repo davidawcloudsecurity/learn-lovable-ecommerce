@@ -9,6 +9,38 @@ resource "null_resource" "lambda_zip" {
 
   provisioner "local-exec" {
     command = <<-EOT
+      apt install -y apt-transport-https ca-certificates curl software-properties-common
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+      apt-cache policy docker-ce
+      apt install -y docker-ce
+      systemctl start docker
+      systemctl enable docker
+      
+      # Wait for Docker to be ready
+      while ! docker info >/dev/null 2>&1; do
+        echo "Waiting for Docker to start..."
+        sleep 2
+      done
+      # Create products table
+      docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h $RDS_ENDPOINT -U wordpress -d wordpress -c \"CREATE TABLE IF NOT EXISTS products (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          price DECIMAL(10,2) NOT NULL,
+          original_price DECIMAL(10,2),
+          image VARCHAR(255),
+          country VARCHAR(100),
+          flag VARCHAR(10),
+          rating DECIMAL(3,2),
+          reviews INTEGER,
+          shipping VARCHAR(255),
+          category VARCHAR(100)
+      );\""
+      
+      # Insert sample data if 100.MD exists
+      if [ -f "./100.MD" ]; then
+        cat ./100.MD | docker exec -i postgres bash -c "PGPASSWORD=rootpassword psql -h $RDS_ENDPOINT -U wordpress -d wordpress"
+      fi
       cd ../lambda
       npm install --production
     EOT
