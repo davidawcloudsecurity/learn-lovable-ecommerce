@@ -11,7 +11,7 @@ resource "null_resource" "lambda_zip" {
     command = <<-EOT
       cd ../lambda
       npm install @vendia/serverless-express
-      zip -r lambda-api.zip . -x "*.zip" "node_modules/*"
+      zip -r lambda-api.zip lambda.js app.js node_modules package.json
     EOT
   }
 }
