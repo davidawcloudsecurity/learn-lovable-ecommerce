@@ -654,7 +654,7 @@ resource "aws_db_instance" "postgres" {
     Name = "postgres-instance"
   }
 }
-/*
+/* remove asg
 # MYSQL AUTOSCALING GROUP
 resource "aws_autoscaling_group" "mysql" {
   name                = "mysql-asg"
