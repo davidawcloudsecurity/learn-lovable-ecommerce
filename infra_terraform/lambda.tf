@@ -10,6 +10,7 @@ resource "null_resource" "lambda_zip" {
   provisioner "local-exec" {
     command = <<-EOT
       cd ../lambda
+      npm install @vendia/serverless-express
       zip -r lambda-api.zip . -x "*.zip" "node_modules/*"
     EOT
   }
