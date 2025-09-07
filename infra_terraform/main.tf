@@ -314,6 +314,14 @@ resource "aws_security_group" "private_db" {
   }
 
   ingress {
+    description = "Setup to allow SSM"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    security_groups = [aws_security_group.lambda_sg.id]
+  }
+
+  ingress {
     description = "Allow HTTP inbound traffic within VPC"
     from_port   = 5432
     to_port     = 5432
