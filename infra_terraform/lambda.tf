@@ -27,7 +27,7 @@ data "archive_file" "lambda_zip" {
   type        = "zip"
   source_dir  = "../lambda"
   output_path = "../lambda/lambda-api.zip"
-  excludes    = ["lambda-api.zip", "node_modules"]
+  excludes    = ["lambda-api.zip"]
   depends_on  = [null_resource.lambda_zip]
 }
 
