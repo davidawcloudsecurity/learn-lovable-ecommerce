@@ -23,7 +23,7 @@ resource "null_resource" "lambda_zip" {
         sleep 2
       done
       # Create products table
-      docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h $RDS_ENDPOINT -U wordpress -d wordpress -c \"CREATE TABLE IF NOT EXISTS products (
+      docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h ${aws_db_instance.postgres.address} -U wordpress -d wordpress -c \"CREATE TABLE IF NOT EXISTS products (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           price DECIMAL(10,2) NOT NULL,
@@ -39,7 +39,7 @@ resource "null_resource" "lambda_zip" {
       
       # Insert sample data if 100.MD exists
       if [ -f "./100.MD" ]; then
-        cat ./100.MD | docker exec -i postgres bash -c "PGPASSWORD=rootpassword psql -h $RDS_ENDPOINT -U wordpress -d wordpress"
+        cat ./100.MD | docker exec -i postgres bash -c "PGPASSWORD=rootpassword psql -h ${aws_db_instance.postgres.address} -U wordpress -d wordpress"
       fi
       cd ../lambda
       npm install --production
