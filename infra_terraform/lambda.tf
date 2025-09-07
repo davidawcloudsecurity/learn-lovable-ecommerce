@@ -9,21 +9,37 @@ resource "null_resource" "lambda_zip" {
 
   provisioner "local-exec" {
     command = <<-EOT
-      apt install -y apt-transport-https ca-certificates curl software-properties-common
+      # Use sudo for all Docker installation commands
+      sudo apt update
+      sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-      add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-      apt-cache policy docker-ce
-      apt install -y docker-ce
-      systemctl start docker
-      systemctl enable docker
+      sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+      sudo apt-cache policy docker-ce
+      sudo apt install -y docker-ce
+      sudo systemctl start docker
+      sudo systemctl enable docker
+      
+      # Add current user to docker group (for GitHub Actions)
+      sudo usermod -aG docker $USER
       
       # Wait for Docker to be ready
-      while ! docker info >/dev/null 2>&1; do
+      while ! sudo docker info >/dev/null 2>&1; do
         echo "Waiting for Docker to start..."
         sleep 2
       done
+      
+      # Run postgres container first
+      sudo docker run -d --name postgres \
+        -e POSTGRES_DB=wordpress \
+        -e POSTGRES_USER=wordpress \
+        -e POSTGRES_PASSWORD=rootpassword \
+        postgres:latest
+      
+      # Wait for postgres to be ready
+      sleep 10
+      
       # Create products table
-      docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h ${aws_db_instance.postgres.address} -U wordpress -d wordpress -c \"CREATE TABLE IF NOT EXISTS products (
+      sudo docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h terraform-20250907061126746800000004.cxao6ceggj41.us-east-1.rds.amazonaws.com -U wordpress -d wordpress -c \"CREATE TABLE IF NOT EXISTS products (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
           price DECIMAL(10,2) NOT NULL,
@@ -39,10 +55,11 @@ resource "null_resource" "lambda_zip" {
       
       # Insert sample data if 100.MD exists
       if [ -f "./100.MD" ]; then
-        cat ./100.MD | docker exec -i postgres bash -c "PGPASSWORD=rootpassword psql -h ${aws_db_instance.postgres.address} -U wordpress -d wordpress"
+        cat ./100.MD | sudo docker exec -i postgres bash -c "PGPASSWORD=rootpassword psql -h terraform-20250907061126746800000004.cxao6ceggj41.us-east-1.rds.amazonaws.com -U wordpress -d wordpress"
       fi
+      
       cd ../lambda
-      npm install --production
+      npm install --omit=dev
     EOT
   }
 }
