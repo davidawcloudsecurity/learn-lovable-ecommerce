@@ -59,6 +59,7 @@ jobs:
           git add main.tf
           git commit -m "random-${COMMIT_HASH}"
           cp main.tf main.tf.origin
+          git stash
           echo "git checkout"
           git checkout destroy/main
           echo "git merge"
