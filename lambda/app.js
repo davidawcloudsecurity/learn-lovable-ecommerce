@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import pkg from 'pg';
 import dotenv from 'dotenv';
+import { initializeProductsTable, insertSampleProducts } from './initProducts.js';
 dotenv.config();
 
 const { Pool } = pkg;
@@ -23,15 +24,26 @@ const pool = new Pool({
   }
 });
 
-// Test DB connection
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Error connecting to PostgreSQL:', err);
-  } else {
+// Test DB connection and initialize
+async function initializeDatabase() {
+  try {
     console.log('✅ Connected to PostgreSQL database');
-    release();
+    
+    // First create table
+    await initializeProductsTable(pool);
+    console.log('Table creation completed, now inserting data...');
+    
+    // Then insert data
+    await insertSampleProducts(pool);
+    console.log('Database initialization completed successfully');
+  } catch (err) {
+    console.error('❌ Database initialization error:', err.message);
+    console.error('Full error:', err);
   }
-});
+}
+
+// Initialize on startup
+initializeDatabase();
 
 // Suggestion endpoint
 app.get('/api/search/suggestions', async (req, res) => {
