@@ -835,7 +835,7 @@ resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
     domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${var.region}.amazonaws.com"
     origin_id   = "APIGateway-${aws_api_gateway_rest_api.api.name}"
-	origin_path = "${aws_api_gateway_stage.prod.stage_name}"
+	origin_path = "/${aws_api_gateway_stage.prod.stage_name}"
 
     custom_origin_config {
       http_port              = 80
