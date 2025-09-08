@@ -834,7 +834,7 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
 resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
     domain_name = aws_lb.example.dns_name
-    origin_id   = "ALB-${aws_lb.example.name}"
+    origin_id   = "APIGateway-${aws_api_gateway_rest_api.ecommerce_api.name}"
 
     custom_origin_config {
       http_port              = 80
