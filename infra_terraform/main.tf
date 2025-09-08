@@ -833,7 +833,7 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
 # CloudFront Distribution with both ALB and S3 origins
 resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
-    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${var.aws_region}.amazonaws.com"
+    domain_name = "${aws_api_gateway_rest_api.api.id}.execute-api.${var.region}.amazonaws.com"
     origin_id   = "APIGateway-${aws_api_gateway_rest_api.api.name}"
 
     custom_origin_config {
