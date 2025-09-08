@@ -379,7 +379,7 @@ resource "aws_iam_instance_profile" "ec2_ssm_profile" {
   name  = "ec2_ssm_profile"
   role  = local.instance_profile_name  # Changed from incorrect reference
 }
-
+/* remove since api gateway and lambda
 # ALB
 resource "aws_lb" "example" {
   name               = "example-alb"
@@ -448,7 +448,7 @@ resource "aws_lb_listener_rule" "api_rule" {
     }
   }
 }
-/*
+
 # WORDPRESS LAUNCH TEMPLATE
 resource "aws_launch_template" "wordpress" {
   name_prefix   = "wordpress-"
