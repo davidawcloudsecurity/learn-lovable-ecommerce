@@ -884,7 +884,17 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     compress               = true
 */
   }
-
+  # API routes to API Gateway
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    allowed_methods  = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "APIGateway-${aws_api_gateway_rest_api.ecommerce_api.name}"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
+    viewer_protocol_policy = "allow-all"
+  }
+/*
   # API routes to ALB
   ordered_cache_behavior {
     path_pattern     = "/api/*"
@@ -893,7 +903,7 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     target_origin_id = "ALB-${aws_lb.example.name}"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
     origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
-/*
+
     forwarded_values {
       query_string = true
       headers      = ["*"]
@@ -902,14 +912,13 @@ resource "aws_cloudfront_distribution" "web_distribution" {
         forward = "all"
       }
     }
-*/
     viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-/*    min_ttl                = 0
+    min_ttl                = 0
     default_ttl            = 0 # No caching for API by default
     max_ttl                = 0
-*/
-  }
 
+  }
+*/
   price_class = "PriceClass_100"
 
   restrictions {
@@ -926,7 +935,7 @@ resource "aws_cloudfront_distribution" "web_distribution" {
   }
 
   depends_on = [
-    aws_lb.example,
+    aws_api_gateway_rest_api.api,
     aws_s3_bucket_policy.cloudfront_access
   ]
 }
