@@ -1,4 +1,9 @@
-.terraform.lock.hcl
+# Terraform files
+*.tfstate
+*.tfstate.*
+*.tfvars
 .terraform/
-../lambda/lambda-api.zip
-terraform.tfstate.backup
+.terraform.lock.hcl
+
+# Lambda deployment packages
+../lambda/*.zip
