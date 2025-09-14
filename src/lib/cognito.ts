@@ -10,8 +10,8 @@ import {
 
 // AWS Cognito configuration - Update these values with your actual Cognito settings
 const REGION = process.env.VITE_AWS_REGION || 'us-east-1';
-const USER_POOL_ID = process.env.VITE_COGNITO_USER_POOL_ID || 'us-east-1_ty2PwS9N2'; // e.g., 'us-east-1_xxxxxxxxx'
-const CLIENT_ID = process.env.VITE_COGNITO_CLIENT_ID || '32bj378nkok3url0s8v9nu7sve'; // Your App Client ID
+const USER_POOL_ID = process.env.VITE_COGNITO_USER_POOL_ID || ''; // e.g., 'us-east-1_xxxxxxxxx'
+const CLIENT_ID = process.env.VITE_COGNITO_CLIENT_ID || ''; // Your App Client ID
 
 // Validate configuration
 if (!USER_POOL_ID || !CLIENT_ID) {
