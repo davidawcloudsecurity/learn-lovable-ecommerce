@@ -1,11 +1,10 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { cognitoAuth, CognitoUser, CognitoSession } from '@/lib/cognito';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: CognitoUser | null;
+  session: CognitoSession | null;
   signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -23,58 +22,67 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<CognitoUser | null>(null);
+  const [session, setSession] = useState<CognitoSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener first
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+    // Check for existing session on mount
+    const currentSession = cognitoAuth.getCurrentSession();
+    if (currentSession && !cognitoAuth.isTokenExpired()) {
+      setSession(currentSession);
+      setUser(currentSession.user);
+    }
+    setLoading(false);
+
+    // Poll for session changes (since Cognito doesn't have real-time auth state changes)
+    const interval = setInterval(() => {
+      const session = cognitoAuth.getCurrentSession();
+      if (session && !cognitoAuth.isTokenExpired()) {
         setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+        setUser(session.user);
+      } else if (session && cognitoAuth.isTokenExpired()) {
+        // Token expired, clear session
+        setSession(null);
+        setUser(null);
+        cognitoAuth.signOut();
       }
-    );
+    }, 30000); // Check every 30 seconds
 
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => clearInterval(interval);
   }, []);
 
   const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
+    const result = await cognitoAuth.signUp(email, password, firstName, lastName);
     
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        }
-      }
-    });
-    return { error };
+    if (!result.success) {
+      return { error: result.error };
+    }
+    
+    // For Cognito, user needs to confirm their email
+    // You might want to redirect to a confirmation page here
+    return { error: null };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    const result = await cognitoAuth.signIn(email, password);
+    
+    if (!result.success) {
+      return { error: result.error };
+    }
+    
+    if (result.session) {
+      setSession(result.session);
+      setUser(result.session.user);
+    }
+    
+    return { error: null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await cognitoAuth.signOut();
+    setSession(null);
+    setUser(null);
   };
 
   const value = {

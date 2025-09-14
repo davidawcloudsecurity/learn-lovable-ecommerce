@@ -4,7 +4,6 @@ import { ShoppingCart, Search, Globe, Menu, X, User, LogOut } from 'lucide-react
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import {
   Popover,
   PopoverContent,
@@ -26,20 +25,16 @@ const Header = () => {
 
   // Fetch user profile data when user is available
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (user) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', user.id)
-          .single();
-        setProfile(data);
-      } else {
-        setProfile(null);
-      }
-    };
-
-    fetchProfile();
+    // Since we're using Cognito, user data is already available in the user object
+    // No need to fetch from Supabase profiles table
+    if (user) {
+      setProfile({
+        first_name: user.firstName,
+        last_name: user.lastName
+      });
+    } else {
+      setProfile(null);
+    }
   }, [user]);
 
   // Debounce helper
