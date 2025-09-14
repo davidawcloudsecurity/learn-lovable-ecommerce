@@ -1,12 +1,12 @@
-
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { cognitoAuth, CognitoUser, CognitoSession } from '@/lib/cognito';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { cognitoAuth, CognitoUser, CognitoSession } from '../lib/cognito';
 
 interface AuthContextType {
   user: CognitoUser | null;
   session: CognitoSession | null;
-  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName?: string, lastName?: string) => Promise<{ error: string | null }>;
+  confirmSignUp: (email: string, code: string) => Promise<{ error: string | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   loading: boolean;
 }
@@ -21,62 +21,42 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<CognitoUser | null>(null);
   const [session, setSession] = useState<CognitoSession | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session on mount
     const currentSession = cognitoAuth.getCurrentSession();
     if (currentSession && !cognitoAuth.isTokenExpired()) {
       setSession(currentSession);
       setUser(currentSession.user);
     }
     setLoading(false);
-
-    // Poll for session changes (since Cognito doesn't have real-time auth state changes)
-    const interval = setInterval(() => {
-      const session = cognitoAuth.getCurrentSession();
-      if (session && !cognitoAuth.isTokenExpired()) {
-        setSession(session);
-        setUser(session.user);
-      } else if (session && cognitoAuth.isTokenExpired()) {
-        // Token expired, clear session
-        setSession(null);
-        setUser(null);
-        cognitoAuth.signOut();
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
   }, []);
 
   const signUp = async (email: string, password: string, firstName?: string, lastName?: string) => {
     const result = await cognitoAuth.signUp(email, password, firstName, lastName);
-    
-    if (!result.success) {
-      return { error: result.error };
-    }
-    
-    // For Cognito, user needs to confirm their email
-    // You might want to redirect to a confirmation page here
-    return { error: null };
+    return result.success ? { error: null } : { error: result.error };
+  };
+
+  const confirmSignUp = async (email: string, code: string) => {
+    const result = await cognitoAuth.confirmSignUp(email, code);
+    return result.success ? { error: null } : { error: result.error };
   };
 
   const signIn = async (email: string, password: string) => {
     const result = await cognitoAuth.signIn(email, password);
-    
-    if (!result.success) {
-      return { error: result.error };
-    }
-    
-    if (result.session) {
+    if (result.success && result.session) {
       setSession(result.session);
       setUser(result.session.user);
+      return { error: null };
     }
-    
-    return { error: null };
+    return { error: result.error };
   };
 
   const signOut = async () => {
@@ -89,14 +69,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     session,
     signUp,
+    confirmSignUp,
     signIn,
     signOut,
     loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
