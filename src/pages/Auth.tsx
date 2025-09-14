@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -40,10 +39,13 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
-          if (error.message.includes('Invalid login credentials')) {
+          if (error.includes('User is not confirmed') || error.includes('UserNotConfirmedException')) {
+            setShowConfirmation(true);
+            setMessage('Please check your email and enter the confirmation code to complete your account setup.');
+          } else if (error.includes('Invalid login credentials')) {
             setError('Invalid email or password. Please check your credentials.');
           } else {
-            setError(error.message);
+            setError(error);
           }
         } else {
           navigate('/');
@@ -51,18 +53,24 @@ const Auth = () => {
       } else {
         const { error } = await signUp(email, password, firstName, lastName);
         if (error) {
-          if (error.message.includes('User already registered')) {
+          if (error.includes('User already registered')) {
             setError('An account with this email already exists. Please sign in instead.');
           } else {
-            setError(error.message);
+            setError(error);
           }
         } else {
           setShowConfirmation(true);
           setMessage('Please check your email and enter the confirmation code.');
         }
       }
-    } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+    } catch (err: any) {
+      console.log('Caught error:', err);
+      if (err.message && (err.message.includes('User is not confirmed') || err.message.includes('UserNotConfirmedException'))) {
+        setShowConfirmation(true);
+        setMessage('Please check your email and enter the confirmation code to complete your account setup.');
+      } else {
+        setError(err.message || 'An unexpected error occurred. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
