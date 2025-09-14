@@ -1,4 +1,4 @@
 .terraform.lock.hcl
 .terraform/
 ../lambda/lambda-api.zip
-../terraform.tfstate.backup
+terraform.tfstate.backup
