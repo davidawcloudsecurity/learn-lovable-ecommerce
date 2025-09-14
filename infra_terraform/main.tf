@@ -786,6 +786,7 @@ resource "null_resource" "upload_images_to_s3" {
   # Trigger re-execution if bucket changes
   triggers = {
     bucket_name = aws_s3_bucket.product_images.bucket
+    timestamp = timestamp()
   }
 }
 
