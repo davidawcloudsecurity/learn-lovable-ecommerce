@@ -17,8 +17,10 @@ const Auth = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState('');
 
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, confirmSignUp, user } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already logged in
@@ -55,7 +57,8 @@ const Auth = () => {
             setError(error.message);
           }
         } else {
-          setMessage('Account created successfully! Please check your email to verify your account.');
+          setShowConfirmation(true);
+          setMessage('Please check your email and enter the confirmation code.');
         }
       }
     } catch (err) {
@@ -104,6 +107,37 @@ const Auth = () => {
             </Alert>
           )}
 
+          {showConfirmation ? (
+            <form className="space-y-6" onSubmit={async (e) => {
+              e.preventDefault();
+              setLoading(true);
+              const { error } = await confirmSignUp(email, confirmationCode);
+              if (error) {
+                setError(error);
+              } else {
+                setMessage('Account confirmed! You can now sign in.');
+                setShowConfirmation(false);
+                setIsLogin(true);
+              }
+              setLoading(false);
+            }}>
+              <div>
+                <Label htmlFor="confirmationCode">Confirmation Code</Label>
+                <Input
+                  id="confirmationCode"
+                  type="text"
+                  required
+                  value={confirmationCode}
+                  onChange={(e) => setConfirmationCode(e.target.value)}
+                  className="mt-1"
+                  placeholder="Enter confirmation code"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Confirming...' : 'Confirm Account'}
+              </Button>
+            </form>
+          ) : (
           <form className="space-y-6" onSubmit={handleSubmit}>
             {!isLogin && (
               <div className="grid grid-cols-2 gap-4">
@@ -166,6 +200,7 @@ const Auth = () => {
               </Button>
             </div>
           </form>
+          )}
         </div>
       </div>
     </div>
