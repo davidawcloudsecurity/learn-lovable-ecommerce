@@ -69,7 +69,7 @@ const Auth = () => {
         setShowConfirmation(true);
         setMessage('Please check your email and enter the confirmation code to complete your account setup.');
       } else {
-        setError(err.message || 'An unexpected error occurred. Please try again.');
+        setError('An unexpected error occurred. Please try again.');
       }
     } finally {
       setLoading(false);
