@@ -73,6 +73,7 @@ jobs:
           git commit -m "random-${COMMIT_HASH}"
           # Push the changes to the 'destroy/main' branch
           git push origin destroy/main
+        continue-on-error: true  # Critical: Continue even if backup fails                    
         working-directory: infra_terraform
 
       - name: Terraform Destroy on Failure
