@@ -3,8 +3,7 @@ import { Button } from '@/components/ui/button';
 import { ShoppingCart, Package } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-const S3_BUCKET_URL = '';
-const S3_IMAGES_PATH = '/assets/images/';
+const IMAGES_PATH = '/assets/images/';
 
 interface ProductCardProps {
   id: number;
@@ -69,7 +68,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
     <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all duration-300 hover:scale-105 group">
       <div className="relative overflow-hidden rounded-t-lg">
         <img
-          src={`${S3_BUCKET_URL}${S3_IMAGES_PATH}${image}`}
+          src={`${IMAGES_PATH}${image}`}
           alt={name}
           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
         />
@@ -85,7 +84,10 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </div>
       
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 cursor-pointer">
+        <h3
+          className="font-semibold text-gray-900 mb-2 line-clamp-2 hover:text-blue-600 cursor-pointer"
+          onClick={() => navigate(`/product/${id}`)} // Navigate to product detail page when clicked
+        >
           {name}
         </h3>
         
