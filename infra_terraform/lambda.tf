@@ -10,44 +10,30 @@ resource "null_resource" "lambda_zip" {
   provisioner "local-exec" {
     command = <<-EOT
       cd ../lambda
-      zip -r lambda-api.zip . -x "*.zip" "node_modules/*"
+      npm install --omit=dev
     EOT
   }
 }
 
-# Lambda Function
-resource "aws_lambda_function" "api" {
-  filename         = "../lambda/lambda-api.zip"
-  function_name    = "ecommerce-api"
-  role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda.handler"
-  runtime         = "nodejs18.x"
-  timeout         = 30
-  source_code_hash = filebase64sha256("../lambda/lambda-api.zip")
+# Check if role exists
+data "aws_iam_role" "existing_role" {
+  count = var.create_new_role ? 0 : 1
+  name  = "lambda-execution-role"
+}
 
-  environment {
-    variables = {
-      POSTGRES_HOST     = aws_db_instance.postgres.endpoint
-      POSTGRES_DB       = aws_db_instance.postgres.db_name
-      POSTGRES_USER     = aws_db_instance.postgres.username
-      POSTGRES_PASSWORD = aws_db_instance.postgres.password
-    }
-  }
-
-  vpc_config {
-    subnet_ids         = [aws_subnet.private_app.id]
-    security_group_ids = [aws_security_group.lambda_sg.id]
-  }
-
-  depends_on = [
-    aws_cloudwatch_log_group.lambda_logs,
-    null_resource.lambda_zip
-  ]
+# Data source to calculate hash after zip is created
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_dir  = "../lambda"
+  output_path = "../lambda/lambda-api.zip"
+  excludes    = ["lambda-api.zip"]
+  depends_on  = [null_resource.lambda_zip]
 }
 
 # IAM Role for Lambda
 resource "aws_iam_role" "lambda_role" {
-  name = "lambda-execution-role"
+  count = var.create_new_role ? 1 : 0
+  name  = "lambda-execution-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -63,10 +49,46 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
+# Use local to select the right role ARN
+locals {
+  lambda_role_arn = var.create_new_role ? aws_iam_role.lambda_role[0].arn : data.aws_iam_role.existing_role[0].arn
+}
+
 # IAM Policy for Lambda
 resource "aws_iam_role_policy_attachment" "lambda_vpc_policy" {
-  role       = aws_iam_role.lambda_role.name
+  count      = var.create_new_role ? 1 : 0
+  role       = aws_iam_role.lambda_role[0].name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+# Lambda Function
+resource "aws_lambda_function" "api" {
+  filename         = data.archive_file.lambda_zip.output_path
+  function_name    = "ecommerce-api"
+  role            = local.lambda_role_arn
+  handler         = "lambda.handler"
+  runtime         = "nodejs16.x"
+  timeout         = 30
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      POSTGRES_HOST     = aws_db_instance.postgres.address
+      POSTGRES_DB       = aws_db_instance.postgres.db_name
+      POSTGRES_USER     = aws_db_instance.postgres.username
+      POSTGRES_PASSWORD = aws_db_instance.postgres.password
+    }
+  }
+
+  vpc_config {
+    subnet_ids         = [aws_subnet.private_app.id]
+    security_group_ids = [aws_security_group.lambda_sg.id]
+  }
+
+  depends_on = [
+    aws_cloudwatch_log_group.lambda_logs,
+    null_resource.lambda_zip
+  ]
 }
 
 # Security Group for Lambda
@@ -85,7 +107,8 @@ resource "aws_security_group" "lambda_sg" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    security_groups = [aws_security_group.private_db.id]
+#    security_groups = [aws_security_group.private_db.id]
+    self        = true
   }
 }
 
@@ -139,10 +162,16 @@ resource "aws_api_gateway_deployment" "api" {
   ]
 
   rest_api_id = aws_api_gateway_rest_api.api.id
-  stage_name  = "prod"
+}
+
+# API Gateway Stage
+resource "aws_api_gateway_stage" "prod" {
+  deployment_id = aws_api_gateway_deployment.api.id
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  stage_name    = "prod"
 }
 
 # Output API URL
 output "api_gateway_url" {
-  value = aws_api_gateway_deployment.api.invoke_url
+  value = aws_api_gateway_stage.prod.invoke_url
 }
