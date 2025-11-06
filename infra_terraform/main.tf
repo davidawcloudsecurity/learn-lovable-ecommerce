@@ -16,6 +16,12 @@ variable "ami_ubuntu" {
   default     = "ami-0a7d80731ae1b2435" # ubuntu-jammy-22.04
 }
 
+variable "create_new_role" {
+  type        = bool
+  default     = false
+  description = "Whether to create new role or use existing"
+}
+
 provider "aws" {
   region  = var.region
 }
