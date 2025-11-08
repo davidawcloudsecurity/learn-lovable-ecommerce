@@ -546,7 +546,8 @@ docker exec postgres bash -c "PGPASSWORD=rootpassword psql -h $RDS_ENDPOINT -U w
     rating DECIMAL(3,2),
     reviews INTEGER,
     shipping VARCHAR(255),
-    category VARCHAR(100)
+    category VARCHAR(100),
+    UNIQUE(name, country)
 );\""
 
 # Insert sample data if 100.MD exists
