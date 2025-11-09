@@ -1,0 +1,143 @@
+async function initializeProductsTable(pool) {
+    try {
+      const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS products (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          price DECIMAL(10,2) NOT NULL,
+          original_price DECIMAL(10,2),
+          image VARCHAR(255),
+          country VARCHAR(100),
+          flag VARCHAR(10),
+          rating DECIMAL(3,2),
+          reviews INTEGER,
+          shipping VARCHAR(255),
+          category VARCHAR(100)
+        )
+      `;
+      
+      await pool.query(createTableQuery);
+      console.log('✅ Products table initialized');
+    } catch (error) {
+      console.error('❌ Error initializing products table:', error);
+    }
+  }
+  
+  async function insertSampleProducts(pool) {
+    try {
+      const insertQuery = `
+  INSERT INTO products (name, price, original_price, image, country, flag, rating, reviews, shipping, category) VALUES
+        ('MacBook Pro', 2500.00, 2800.00, 'photo-1647805256812-ccb927cf1f67', 'USA', '🇺🇸', 4.8, 1250, 'Free shipping', 'Electronics'),
+        ('Lamp Shade', 25.00, 35.00, 'photo-1694353560850-436cb191fb8c', 'Italy', '🇮🇹', 4.2, 89, '$5.99 shipping', 'Home & Garden'),
+        ('Laser Printer', 150.00, 199.00, 'photo-1625961332771-3f40b0e2bdcf', 'Japan', '🇯🇵', 4.5, 456, 'Free shipping', 'Electronics'),
+        ('Laptop Stand', 45.00, 60.00, 'photo-1623251606108-512c7c4a3507', 'Germany', '🇩🇪', 4.3, 234, '$3.99 shipping', 'Electronics'),
+        ('LED Light Bulb', 12.00, 18.00, 'photo-1553213134-f60afad82ceb', 'China', '🇨🇳', 4.1, 567, 'Free shipping', 'Home & Garden'),
+        ('Luggage Set', 120.00, 160.00, 'photo-1708403120467-1715bb6840df', 'France', '🇫🇷', 4.6, 123, '$8.99 shipping', 'Travel'),
+        ('Camping Lantern', 35.00, 50.00, 'photo-1570739260082-39a84dae80c8', 'Canada', '🇨🇦', 4.4, 198, 'Free shipping', 'Outdoor'),
+        ('Bluetooth Speaker', 80.00, 100.00, 'photo-1674303324806-7018a739ed11', 'USA', '🇺🇸', 4.7, 340, 'Free shipping', 'Electronics'),
+        ('Coffee Maker', 75.00, 90.00, 'photo-1627888926504-3f10d99f8bd0', 'Italy', '🇮🇹', 4.3, 213, '$4.99 shipping', 'Home & Garden'),
+        ('Wireless Mouse', 20.00, 25.00, 'photo-1592155931584-901ac15763e3', 'Japan', '🇯🇵', 4.5, 500, 'Free shipping', 'Electronics'),
+        ('Yoga Mat', 30.00, 40.00, 'photo-1621879164000-2da8d59b733c', 'Germany', '🇩🇪', 4.6, 145, '$2.99 shipping', 'Fitness'),
+        ('Smartwatch', 200.00, 250.00, 'photo-1523275335684-37898b6baf30', 'China', '🇨🇳', 4.4, 378, 'Free shipping', 'Electronics'),
+        ('Backpack', 65.00, 80.00, 'photo-1553062407-45b4a6a3a3a3', 'France', '🇫🇷', 4.5, 99, '$5.00 shipping', 'Travel'),
+        ('Electric Kettle', 40.00, 50.00, 'photo-1596755094514-6f4a8a8a8a8a', 'Canada', '🇨🇦', 4.2, 120, 'Free shipping', 'Home & Garden'),
+        ('Running Shoes', 90.00, 110.00, 'photo-1542291026-7eec264c27ff', 'USA', '🇺🇸', 4.7, 300, 'Free shipping', 'Fitness'),
+        ('Desk Organizer', 15.00, 20.00, 'photo-1594026112284-02bb5f8d1c2e', 'Italy', '🇮🇹', 4.1, 60, '$3.99 shipping', 'Home & Garden'),
+        ('Digital Camera', 550.00, 600.00, 'photo-1516035069371-29a1b244cc32', 'Japan', '🇯🇵', 4.8, 200, 'Free shipping', 'Electronics'),
+        ('Camping Tent', 150.00, 180.00, 'photo-1537905569824-f97c4482a6f0', 'Germany', '🇩🇪', 4.4, 140, '$7.99 shipping', 'Outdoor'),
+        ('LED Desk Lamp', 35.00, 45.00, 'photo-1504384308090-c894fdcc538d', 'China', '🇨🇳', 4.3, 90, 'Free shipping', 'Home & Garden'),
+        ('Travel Pillow', 25.00, 30.00, 'photo-1517423440428-a5a00ad493e8', 'France', '🇫🇷', 4.6, 110, '$4.99 shipping', 'Travel'),
+        ('Wireless Headphones', 130.00, 150.00, 'photo-1496181133206-80ce9b88a853', 'Canada', '🇨🇦', 4.7, 210, 'Free shipping', 'Electronics'),
+        ('Fitness Tracker', 90.00, 110.00, 'photo-1526401485004-2d1675a330a6', 'USA', '🇺🇸', 4.5, 280, 'Free shipping', 'Fitness'),
+        ('Wall Clock', 40.00, 50.00, 'photo-1486308510493-c62a8d8a0a32', 'Italy', '🇮🇹', 4.2, 80, '$3.99 shipping', 'Home & Garden'),
+        ('Smartphone Case', 20.00, 25.00, 'photo-1506744038136-46273834b3fb', 'Japan', '🇯🇵', 4.4, 170, 'Free shipping', 'Electronics'),
+        ('Electric Toothbrush', 60.00, 70.00, 'photo-1499951360447-b19be8fe80f5', 'Germany', '🇩🇪', 4.3, 130, '$4.99 shipping', 'Home & Garden'),
+        ('Hiking Boots', 120.00, 140.00, 'photo-1506744038136-46273834b3fb', 'China', '🇨🇳', 4.6, 160, 'Free shipping', 'Outdoor'),
+        ('Coffee Table', 250.00, 280.00, 'photo-1503602642458-232111445657', 'France', '🇫🇷', 4.4, 90, '$7.99 shipping', 'Home & Garden'),
+        ('Tablet', 300.00, 350.00, 'photo-1593640408182-31c70c8268f5', 'Canada', '🇨🇦', 4.7, 210, 'Free shipping', 'Electronics'),
+        ('Water Bottle', 15.00, 18.00, 'photo-1587494478039-9a051031c4c4', 'USA', '🇺🇸', 4.5, 240, 'Free shipping', 'Outdoor'),
+        ('Desk Chair', 100.00, 120.00, 'photo-1592078615290-033ee584e267', 'Italy', '🇮🇹', 4.2, 140, '$6.99 shipping', 'Home & Garden'),
+        ('Smart TV', 1200.00, 1400.00, 'photo-1571415060716-baff5f717c37', 'Japan', '🇯🇵', 4.8, 400, 'Free shipping', 'Electronics'),
+        ('Electric Fan', 45.00, 55.00, 'photo-1589391886645-d51941baf7fb', 'Germany', '🇩🇪', 4.3, 130, '$4.99 shipping', 'Home & Garden'),
+        ('Camping Chair', 30.00, 40.00, 'photo-1523987355523-c7b5b0dd90a7', 'China', '🇨🇳', 4.4, 100, 'Free shipping', 'Outdoor'),
+        ('Suitcase', 110.00, 130.00, 'photo-1565206475204-493388e4a1d5', 'France', '🇫🇷', 4.6, 140, '$8.99 shipping', 'Travel'),
+        ('Action Camera', 250.00, 280.00, 'photo-1516035069371-29a1b244cc32', 'Canada', '🇨🇦', 4.7, 190, 'Free shipping', 'Electronics'),
+        ('Electric Grill', 180.00, 200.00, 'photo-1556911220-bff31c812dba', 'USA', '🇺🇸', 4.5, 210, 'Free shipping', 'Home & Garden'),
+        ('Fitness Mat', 35.00, 45.00, 'photo-1571902943201-8a338e5a8a9b', 'Italy', '🇮🇹', 4.3, 130, '$3.99 shipping', 'Fitness'),
+        ('Bluetooth Earbuds', 90.00, 110.00, 'photo-1572569511252-d8dcd61e1d0a', 'Japan', '🇯🇵', 4.6, 300, 'Free shipping', 'Electronics'),
+        ('Garden Hose', 40.00, 50.00, 'photo-1593642632823-8f785ba67e45', 'Germany', '🇩🇪', 4.1, 75, '$4.99 shipping', 'Home & Garden'),
+        ('Trekking Poles', 60.00, 75.00, 'photo-1523987355523-c7b5b0dd90a7', 'China', '🇨🇳', 4.5, 120, 'Free shipping', 'Outdoor'),
+        ('Travel Backpack', 70.00, 85.00, 'photo-1553062407-45b4a6a3a3a3', 'France', '🇫🇷', 4.7, 160, '$5.99 shipping', 'Travel'),
+        ('Electric Scooter', 350.00, 400.00, 'photo-1593764592111-b96b182959a6', 'Canada', '🇨🇦', 4.8, 210, 'Free shipping', 'Outdoor'),
+        ('Standing Desk', 300.00, 350.00, 'photo-1592078615290-033ee584e267', 'USA', '🇺🇸', 4.6, 180, 'Free shipping', 'Home & Garden'),
+        ('Smart Light Bulb', 25.00, 30.00, 'photo-1586283471569-a89bb9935c93', 'Italy', '🇮🇹', 4.3, 150, '$3.99 shipping', 'Electronics'),
+        ('Electric Bike', 800.00, 900.00, 'photo-1593764592111-b96b182959a6', 'Japan', '🇯🇵', 4.7, 220, 'Free shipping', 'Outdoor'),
+        ('Indoor Plant', 30.00, 40.00, 'photo-1513506003901-1a6f229c06af', 'Germany', '🇩🇪', 4.2, 130, '$2.99 shipping', 'Home & Garden'),
+        ('Wireless Charger', 40.00, 50.00, 'photo-1592155931584-901ac15763e3', 'China', '🇨🇳', 4.5, 175, 'Free shipping', 'Electronics'),
+        ('Camping Stove', 90.00, 110.00, 'photo-1556911220-bff31c812dba', 'France', '🇫🇷', 4.6, 140, '$5.99 shipping', 'Outdoor'),
+        ('Noise Cancelling Headphones', 220.00, 250.00, 'photo-1496181133206-80ce9b88a853', 'Canada', '🇨🇦', 4.8, 300, 'Free shipping', 'Electronics'),
+        ('Pressure Cooker', 60.00, 70.00, 'photo-1568849676081-0aa5e9e3b6c8', 'USA', '🇺🇸', 4.4, 180, 'Free shipping', 'Home & Garden'),
+        ('Yoga Block', 15.00, 20.00, 'photo-1571902943201-8a338e5a8a9b', 'Italy', '🇮🇹', 4.1, 90, '$2.99 shipping', 'Fitness'),
+        ('Wireless Keyboard', 50.00, 60.00, 'photo-1592155931584-901ac15763e3', 'Japan', '🇯🇵', 4.5, 200, 'Free shipping', 'Electronics'),
+        ('Garden Gloves', 12.00, 15.00, 'photo-1593642632823-8f785ba67e45', 'Germany', '🇩🇪', 4.2, 80, '$1.99 shipping', 'Home & Garden'),
+        ('Hiking Backpack', 90.00, 110.00, 'photo-1553062407-45b4a6a3a3a3', 'China', '🇨🇳', 4.6, 140, 'Free shipping', 'Outdoor'),
+        ('Portable Charger', 40.00, 50.00, 'photo-1592155931584-901ac15763e3', 'France', '🇫🇷', 4.5, 180, '$4.99 shipping', 'Electronics'),
+        ('Electric Blanket', 70.00, 80.00, 'photo-1589391886645-d51941baf7fb', 'Canada', '🇨🇦', 4.4, 120, 'Free shipping', 'Home & Garden'),
+        ('Tennis Racket', 120.00, 140.00, 'photo-1542291026-7eec264c27ff', 'USA', '🇺🇸', 4.7, 210, 'Free shipping', 'Sports'),
+        ('Wall Art', 50.00, 60.00, 'photo-1513506003901-1a6f229c06af', 'Italy', '🇮🇹', 4.3, 100, '$3.99 shipping', 'Home & Garden'),
+        ('Smart Door Lock', 180.00, 210.00, 'photo-1572569511252-d8dcd61e1d0a', 'Japan', '🇯🇵', 4.6, 140, 'Free shipping', 'Electronics'),
+        ('Electric Scooter Helmet', 45.00, 55.00, 'photo-1523987355523-c7b5b0dd90a7', 'Germany', '🇩🇪', 4.4, 90, '$4.99 shipping', 'Outdoor'),
+        ('Camping Hammock', 60.00, 75.00, 'photo-1523987355523-c7b5b0dd90a7', 'China', '🇨🇳', 4.5, 130, 'Free shipping', 'Outdoor'),
+        ('Travel Adapter', 25.00, 30.00, 'photo-1517423440428-a5a00ad493e8', 'France', '🇫🇷', 4.3, 110, '$2.99 shipping', 'Travel'),
+        ('Smart Thermostat', 200.00, 230.00, 'photo-1586283471569-a89bb9935c93', 'Canada', '🇨🇦', 4.7, 160, 'Free shipping', 'Home & Garden'),
+        ('Gaming Monitor', 400.00, 450.00, 'photo-1593640408182-31c70c8268f5', 'USA', '🇺🇸', 4.8, 320, 'Free shipping', 'Electronics'),
+        ('Air Purifier', 220.00, 260.00, 'photo-1582654062278-e0d6ec5c0ca3', 'Italy', '🇮🇹', 4.5, 180, '$6.99 shipping', 'Home & Garden'),
+        ('Mechanical Keyboard', 120.00, 140.00, 'photo-1583394838336-acd977736f90', 'Japan', '🇯🇵', 4.6, 250, 'Free shipping', 'Electronics'),
+        ('Protein Powder', 35.00, 45.00, 'photo-1594736797933-d0401ba2a65a', 'Germany', '🇩🇪', 4.4, 190, '$4.99 shipping', 'Fitness'),
+        ('Robot Vacuum', 300.00, 350.00, 'photo-1558618047-3c8c76ca7d13', 'China', '🇨🇳', 4.7, 210, 'Free shipping', 'Home & Garden'),
+        ('Ski Jacket', 180.00, 220.00, 'photo-1516490701597-8c4b8f8d1c8f', 'France', '🇫🇷', 4.6, 120, '$7.99 shipping', 'Outdoor'),
+        ('Power Bank', 60.00, 75.00, 'photo-1609592542047-6e9f7e0b5c6b', 'Canada', '🇨🇦', 4.5, 280, 'Free shipping', 'Electronics'),
+        ('Dumbbells Set', 80.00, 100.00, 'photo-1558618047-3c8c76ca7d13', 'USA', '🇺🇸', 4.7, 150, 'Free shipping', 'Fitness'),
+        ('Espresso Machine', 450.00, 500.00, 'photo-1568849676081-0aa5e9e3b6c8', 'Italy', '🇮🇹', 4.8, 140, '$8.99 shipping', 'Home & Garden'),
+        ('VR Headset', 400.00, 480.00, 'photo-1593640408182-31c70c8268f5', 'Japan', '🇯🇵', 4.6, 190, 'Free shipping', 'Electronics'),
+        ('Sleeping Bag', 75.00, 95.00, 'photo-1537905569824-f97c4482a6f0', 'Germany', '🇩🇪', 4.5, 110, '$5.99 shipping', 'Outdoor'),
+        ('Wine Glasses Set', 40.00, 50.00, 'photo-1556679343-c7306c1976bc', 'China', '🇨🇳', 4.3, 95, '$3.99 shipping', 'Home & Garden'),
+        ('Camping Cookware', 65.00, 80.00, 'photo-1556911220-bff31c812dba', 'France', '🇫🇷', 4.4, 125, '$4.99 shipping', 'Outdoor'),
+        ('Luggage Tags', 8.00, 12.00, 'photo-1517423440428-a5a00ad493e8', 'Canada', '🇨🇦', 4.1, 85, '$1.99 shipping', 'Travel'),
+        ('Gaming Headset', 90.00, 110.00, 'photo-1496181133206-80ce9b88a853', 'USA', '🇺🇸', 4.7, 220, 'Free shipping', 'Electronics'),
+        ('Resistance Bands', 25.00, 30.00, 'photo-1571902943201-8a338e5a8a9b', 'Italy', '🇮🇹', 4.6, 160, '$2.99 shipping', 'Fitness'),
+        ('Food Processor', 120.00, 140.00, 'photo-1568849676081-0aa5e9e3b6c8', 'Japan', '🇯🇵', 4.5, 135, '$5.99 shipping', 'Home & Garden'),
+        ('Drone Camera', 600.00, 700.00, 'photo-1516035069371-29a1b244cc32', 'Germany', '🇩🇪', 4.8, 180, 'Free shipping', 'Electronics'),
+        ('Picnic Blanket', 35.00, 45.00, 'photo-1517423440428-a5a00ad493e8', 'China', '🇨🇳', 4.3, 90, '$3.99 shipping', 'Outdoor'),
+        ('Duffle Bag', 55.00, 70.00, 'photo-1553062407-45b4a6a3a3a3', 'France', '🇫🇷', 4.4, 105, '$4.99 shipping', 'Travel'),
+        ('Smart Scale', 50.00, 60.00, 'photo-1526401485004-2d1675a330a6', 'Canada', '🇨🇦', 4.5, 170, 'Free shipping', 'Fitness'),
+        ('USB Hub', 30.00, 40.00, 'photo-1592155931584-901ac15763e3', 'USA', '🇺🇸', 4.4, 145, '$2.99 shipping', 'Electronics'),
+        ('Garden Sprinkler', 45.00, 55.00, 'photo-1556679343-c7306c1976bc', 'Italy', '🇮🇹', 4.2, 110, '$3.99 shipping', 'Home & Garden'),
+        ('Fishing Rod', 85.00, 105.00, 'photo-1523987355523-c7b5b0dd90a7', 'Japan', '🇯🇵', 4.6, 130, '$5.99 shipping', 'Outdoor'),
+        ('Compression Socks', 18.00, 25.00, 'photo-1571902943201-8a338e5a8a9b', 'Germany', '🇩🇪', 4.3, 200, '$2.99 shipping', 'Fitness'),
+        ('Security Camera', 120.00, 150.00, 'photo-1586283471569-a89bb9935c93', 'China', '🇨🇳', 4.7, 160, 'Free shipping', 'Electronics'),
+        ('Beach Umbrella', 65.00, 80.00, 'photo-1517423440428-a5a00ad493e8', 'France', '🇫🇷', 4.4, 95, '$5.99 shipping', 'Outdoor'),
+        ('Passport Holder', 20.00, 25.00, 'photo-1517423440428-a5a00ad493e8', 'Canada', '🇨🇦', 4.2, 120, '$2.99 shipping', 'Travel'),
+        ('Foam Roller', 40.00, 50.00, 'photo-1571902943201-8a338e5a8a9b', 'USA', '🇺🇸', 4.5, 180, '$3.99 shipping', 'Fitness'),
+        ('Webcam', 80.00, 100.00, 'photo-1592155931584-901ac15763e3', 'Italy', '🇮🇹', 4.6, 210, 'Free shipping', 'Electronics'),
+        ('Greenhouse Kit', 250.00, 300.00, 'photo-1556679343-c7306c1976bc', 'Japan', '🇯🇵', 4.3, 80, '$9.99 shipping', 'Home & Garden'),
+        ('Climbing Rope', 70.00, 85.00, 'photo-1523987355523-c7b5b0dd90a7', 'Germany', '🇩🇪', 4.7, 100, '$4.99 shipping', 'Outdoor'),
+        ('Travel Organizer', 30.00, 35.00, 'photo-1517423440428-a5a00ad493e8', 'China', '🇨🇳', 4.4, 140, '$2.99 shipping', 'Travel'),
+        ('Jump Rope', 15.00, 20.00, 'photo-1571902943201-8a338e5a8a9b', 'France', '🇫🇷', 4.3, 165, '$1.99 shipping', 'Fitness'),
+        ('Smart Watch Band', 25.00, 35.00, 'photo-1523275335684-37898b6baf30', 'Canada', '🇨🇦', 4.2, 190, 'Free shipping', 'Electronics'),
+        ('Bird Feeder', 35.00, 45.00, 'photo-1556679343-c7306c1976bc', 'USA', '🇺🇸', 4.1, 75, '$3.99 shipping', 'Home & Garden'),
+        ('Sleeping Pad', 50.00, 65.00, 'photo-1537905569824-f97c4482a6f0', 'Italy', '🇮🇹', 4.5, 115, '$4.99 shipping', 'Outdoor'),
+        ('Neck Pillow', 22.00, 28.00, 'photo-1517423440428-a5a00ad493e8', 'Japan', '🇯🇵', 4.3, 155, '$2.99 shipping', 'Travel'),
+        ('Medicine Ball', 45.00, 55.00, 'photo-1571902943201-8a338e5a8a9b', 'Germany', '🇩🇪', 4.6, 125, '$3.99 shipping', 'Fitness'),
+        ('External Hard Drive', 100.00, 120.00, 'photo-1517336714731-489689fd1ca8', 'China', '🇨🇳', 4.7, 240, 'Free shipping', 'Electronics')
+        ON CONFLICT DO NOTHING
+      `;
+      
+      await pool.query(insertQuery);
+      console.log('✅ Sample products inserted');
+    } catch (error) {
+      console.error('❌ Error inserting products:', error);
+    }
+  }
+  
+  export { initializeProductsTable, insertSampleProducts };
