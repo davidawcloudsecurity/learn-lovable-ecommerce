@@ -41,12 +41,16 @@ jobs:
           terraform fmt
           terraform validate
           terraform plan
-          echo "Check if ec2_ssm_profile exists" # Check if the instance profile ec2_ssm_profile exists
-          if aws iam get-instance-profile --instance-profile-name ec2_ssm_profile > /dev/null 2>&1; then
-              echo "Instance profile ec2_ssm_profile exists, deleting..."
+          echo "Checking ec2_ssm_profile..."
+          if aws iam get-instance-profile --instance-profile-name ec2_ssm_profile >/dev/null 2>&1; then
+              ROLES=$(aws iam get-instance-profile --instance-profile-name ec2_ssm_profile --query 'InstanceProfile.Roles[*].RoleName' --output text)
+              for ROLE in $ROLES; do
+                  aws iam remove-role-from-instance-profile --instance-profile-name ec2_ssm_profile --role-name "$ROLE"
+              done
+              sleep 2
               aws iam delete-instance-profile --instance-profile-name ec2_ssm_profile
           else
-              echo "Instance profile ec2_ssm_profile does not exist"
+              echo "Profile doesn't exist"
           fi       
           terraform apply --auto-approve
         working-directory: infra_terraform
