@@ -990,7 +990,7 @@ resource "aws_instance" "mysql" {
               cd learn-lovable-borderless-trade-sphere/
               sed -i "s/localhost/$(hostname -I | awk '{print $1}')/g" server.js
               apt update -y
-              curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
               apt-get install -y nodejs
               apt install -y npm
               npm install -y express cors
