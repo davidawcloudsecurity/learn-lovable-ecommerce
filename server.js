@@ -132,7 +132,8 @@ const mockProducts = [
 // Suggestion endpoint
 app.get('/api/search/suggestions', async (req, res) => {
   try {
-    const q = req.query.q?.toLowerCase() || '';
+    // Compatible with older Node versions (no optional chaining)
+    const q = (req.query && req.query.q) ? String(req.query.q).toLowerCase() : '';
     const query = `
       SELECT DISTINCT name 
       FROM products 
