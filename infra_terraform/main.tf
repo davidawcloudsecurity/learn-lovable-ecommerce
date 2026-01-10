@@ -393,14 +393,14 @@ resource "aws_lb" "example" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
+  name     = "frontend-tg2"
   port     = 8080
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 }
 
 resource "aws_lb_target_group" "backend" {
-  name     = "backend-tg"
+  name     = "backend-tg2"
   port     = 3001
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -795,7 +795,7 @@ resource "aws_lb" "example" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
+  name     = "frontend-tg2"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
@@ -812,7 +812,7 @@ resource "aws_lb_target_group" "frontend" {
 
 # Target Groups for 11 services
 resource "aws_lb_target_group" "sp" {
-  name     = "tg-sp"
+  name     = "tg2-sp"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -822,7 +822,7 @@ resource "aws_lb_target_group" "sp" {
 }
 
 resource "aws_lb_target_group" "tk" {
-  name     = "tg-tk"
+  name     = "tg2-tk"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -832,7 +832,7 @@ resource "aws_lb_target_group" "tk" {
 }
 
 resource "aws_lb_target_group" "sc" {
-  name     = "tg-sc"
+  name     = "tg2-sc"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -842,7 +842,7 @@ resource "aws_lb_target_group" "sc" {
 }
 
 resource "aws_lb_target_group" "qr" {
-  name     = "tg-qr"
+  name     = "tg2-qr"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -852,7 +852,7 @@ resource "aws_lb_target_group" "qr" {
 }
 
 resource "aws_lb_target_group" "kb" {
-  name     = "tg-kb"
+  name     = "tg2-kb"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -862,7 +862,7 @@ resource "aws_lb_target_group" "kb" {
 }
 
 resource "aws_lb_target_group" "fc" {
-  name     = "tg-fc"
+  name     = "tg2-fc"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -872,7 +872,7 @@ resource "aws_lb_target_group" "fc" {
 }
 
 resource "aws_lb_target_group" "bp" {
-  name     = "tg-bp"
+  name     = "tg2-bp"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -882,7 +882,7 @@ resource "aws_lb_target_group" "bp" {
 }
 
 resource "aws_lb_target_group" "bm" {
-  name     = "tg-bm"
+  name     = "tg2-bm"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -892,7 +892,7 @@ resource "aws_lb_target_group" "bm" {
 }
 
 resource "aws_lb_target_group" "bc" {
-  name     = "tg-bc"
+  name     = "tg2-bc"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
@@ -902,7 +902,7 @@ resource "aws_lb_target_group" "bc" {
 }
 
 resource "aws_lb_target_group" "ap" {
-  name     = "tg-ap"
+  name     = "tg2-ap"
   port     = 443
   protocol = "HTTPS"
   vpc_id   = aws_vpc.main.id
