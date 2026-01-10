@@ -1,0 +1,99 @@
+# This is a basic workflow to help you get started with Actions
+name: learn-lovable-ecommerce-destroy
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_REGION : "us-east-1" #Change to reflect your Region
+
+# Permission can be added at job level or workflow level    
+permissions:
+      id-token: write   # This is required for requesting the JWT
+      contents: write    # This is required for actions/checkout
+jobs:
+  Destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git clone the repository
+        uses: actions/checkout@v3
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1.7.0
+        with:
+          role-to-assume: arn:aws:iam::762595429056:role/GithubActions #change to reflect your IAM role’s ARN
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ env.AWS_REGION }}
+      # Hello from AWS: WhoAmI
+      - name: Sts GetCallerIdentity
+        run: |
+          aws sts get-caller-identity
+          
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v1
+        
+      - name: Initialize, validate, format Terraform
+        run: |
+          ls -lah
+          pwd
+          ls -lah state
+          mv state/terraform.tfstate ./terraform.tfstate
+          ls -lah
+          echo "Terraform init"
+          echo ""
+          terraform init
+          terraform validate
+          terraform fmt
+        working-directory: infra_terraform        
+      
+      - name: Terraform Plan
+        run: terraform plan -destroy
+        working-directory: infra_terraform
+
+      - name: Terraform State
+        run: terraform state list
+        working-directory: infra_terraform
+      
+      - name: Terraform Destroy Targeted Resources
+        run: |
+          terraform destroy -auto-approve -input=false
+          aws iam delete-role --role-name ec2_ssm_role 2>/dev/null && echo "Deleted ec2_ssm_role" || echo "ec2_ssm_role not found"    
+        working-directory: infra_terraform
+
+      - name: Clean tfstate and Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://github.com/davidawcloudsecurity/learn-lovable-ecommerce.git
+          
+          # Fetch latest
+          git fetch origin destroy/main
+          
+          # Checkout and FORCE reset to clean state (discard ALL local changes)
+          git checkout destroy/main
+          git reset --hard origin/destroy/main
+          
+          # Clean any untracked files if needed
+          git clean -fd
+          
+          # NOW make your changes AFTER the reset
+          echo "" > state/terraform.tfstate
+          
+          # If there's a terraform.tfstate in current directory, move it
+          if [ -f terraform.tfstate ]; then
+            mv terraform.tfstate state/
+          fi
+          
+          # Stage changes
+          git add state/
+          
+          # Commit if there are changes
+          if ! git diff --staged --quiet; then
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+            git commit -m "clean-${COMMIT_HASH}"
+            git push origin destroy/main
+          else
+            echo "No changes to commit"
+          fi
+                 
+          pwd
+        working-directory: infra_terraform
