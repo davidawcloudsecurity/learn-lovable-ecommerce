@@ -1390,7 +1390,7 @@ resource "aws_ecr_repository" "nginx" {
   count                = var.create_new_role ? 1 : 0
   name                 = "nginx-ecommerce"
   image_tag_mutability = "MUTABLE"
-
+  force_delete         = true
   image_scanning_configuration {
     scan_on_push = true
   }
