@@ -74,10 +74,7 @@ jobs:
           
           # Clean any untracked files if needed
           git clean -fd
-          
-          # NOW make your changes AFTER the reset
-          echo "" > state/terraform.tfstate
-          
+                   
           # If there's a terraform.tfstate in current directory, move it
           if [ -f terraform.tfstate ]; then
             mv terraform.tfstate state/
