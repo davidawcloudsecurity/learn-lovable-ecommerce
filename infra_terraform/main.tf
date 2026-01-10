@@ -51,7 +51,7 @@ variable "ami_ubuntu" {
 }
 
 provider "aws" {
-  region  = var.region
+  region = var.region
 }
 
 # VPC
@@ -263,18 +263,18 @@ resource "aws_security_group" "private_app" {
   }
 
   ingress {
-    description = "HTTPS from public subnet"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
+    description     = "HTTPS from public subnet"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
     security_groups = [aws_security_group.public_facing.id]
   }
 
   ingress {
-    description = "MYSQL/Aurora from private subnet"
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "TCP"
+    description     = "MYSQL/Aurora from private subnet"
+    from_port       = 3001
+    to_port         = 3001
+    protocol        = "TCP"
     security_groups = [aws_security_group.public_facing.id]
   }
 
@@ -294,7 +294,7 @@ resource "aws_security_group" "private_db" {
   name        = "allow_backend"
   description = "Allow HTTP inbound traffic within VPC"
   vpc_id      = aws_vpc.main.id
-/* Exclude because using api
+  /* Exclude because using api
   ingress {
     description = "HTTP from private subnet app tier"
     from_port   = 3306
@@ -309,7 +309,7 @@ resource "aws_security_group" "private_db" {
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-#    cidr_blocks = [aws_security_group.public.id]
+    #    cidr_blocks = [aws_security_group.public.id]
     security_groups = [aws_security_group.private_app.id]
   }
 
@@ -321,7 +321,7 @@ resource "aws_security_group" "private_db" {
     to_port     = 5432
     protocol    = "tcp"
     self        = true
-  } 
+  }
 
   egress {
     description = "Outbound to all"
@@ -364,14 +364,14 @@ locals {
 # Policy attachment
 resource "aws_iam_role_policy_attachment" "ssm_policy_attachment" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
-  role       = local.instance_profile_name  # Changed from incorrect reference
+  role       = local.instance_profile_name # Changed from incorrect reference
 }
 
 # Instance profile
 resource "aws_iam_instance_profile" "ec2_ssm_profile" {
-  count = var.create_new_role ? 1 : 0  # Add count to avoid conflicts
+  count = var.create_new_role ? 1 : 0 # Add count to avoid conflicts
   name  = "ec2_ssm_profile"
-  role  = local.instance_profile_name  # Changed from incorrect reference
+  role  = local.instance_profile_name # Changed from incorrect reference
 }
 /* remove since api gateway and lambda
 # ALB
@@ -659,7 +659,7 @@ resource "aws_autoscaling_group" "mysql" {
 resource "aws_s3_bucket" "product_images" {
   bucket = "learn-lovable-product-images-${random_id.suffix.hex}" # Use unique suffix to avoid bucket name conflicts
 
-# ✅ This will automatically delete all objects when destroying the bucket
+  # ✅ This will automatically delete all objects when destroying the bucket
   force_destroy = true
 
   tags = {
@@ -676,10 +676,10 @@ resource "random_id" "suffix" {
 resource "aws_s3_bucket_public_access_block" "public_access" {
   bucket = aws_s3_bucket.product_images.id
 
-  block_public_acls       = true   # Block public ACLs
-  block_public_policy     = true   # Block public bucket policies
-  ignore_public_acls      = true   # Ignore public ACLs
-  restrict_public_buckets = true   # Block public policies
+  block_public_acls       = true # Block public ACLs
+  block_public_policy     = true # Block public bucket policies
+  ignore_public_acls      = true # Ignore public ACLs
+  restrict_public_buckets = true # Block public policies
 }
 
 # Bucket policy remains unchanged (uses policy, not ACLs)
@@ -689,12 +689,12 @@ resource "aws_s3_bucket_policy" "cloudfront_access" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect    = "Allow"
+        Effect = "Allow"
         Principal = {
           AWS = aws_cloudfront_origin_access_identity.s3_oai.iam_arn
         }
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.product_images.arn}/*"
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.product_images.arn}/*"
       }
     ]
   })
@@ -748,7 +748,7 @@ resource "null_resource" "upload_images_to_s3" {
   # Trigger re-execution if bucket changes
   triggers = {
     bucket_name = aws_s3_bucket.product_images.bucket
-    timestamp = timestamp()
+    timestamp   = timestamp()
   }
 }
 
@@ -774,7 +774,7 @@ resource "null_resource" "create_self_signed_cert" {
 
 # Read certificate ARN from file
 data "local_file" "cert_arn" {
-  filename = "cert_arn.txt"
+  filename   = "cert_arn.txt"
   depends_on = [null_resource.create_self_signed_cert]
 }
 
@@ -784,7 +784,7 @@ resource "aws_lb" "example" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
-  subnets            = [
+  subnets = [
     aws_subnet.public_facing_1a.id,
     aws_subnet.public_facing_1b.id
   ]
@@ -1175,12 +1175,12 @@ resource "aws_cloudfront_distribution" "web_distribution" {
 
   # Default behavior routes to S3
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.product_images.bucket}"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
+    allowed_methods          = ["GET", "HEAD", "OPTIONS"]
+    cached_methods           = ["GET", "HEAD"]
+    target_origin_id         = "S3-${aws_s3_bucket.product_images.bucket}"
+    cache_policy_id          = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
     origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # Managed-CORS-S3Origin
-/*
+    /*
     forwarded_values {
       query_string = false
       headers      = ["Origin"]
@@ -1191,14 +1191,14 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     }
 */
     viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-/*    min_ttl                = 0
+    /*    min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
     compress               = true
 */
   }
 
-/*
+  /*
   # API routes to ALB
   ordered_cache_behavior {
     path_pattern     = "/api/*"
@@ -1381,7 +1381,7 @@ output "seeds" {
 
 # Check if ECR repository exists
 data "aws_ecr_repository" "existing_nginx" {
-  name = "nginx-ecommerce"
+  name  = "nginx-ecommerce"
   count = var.create_new_role ? 0 : 1
 }
 
@@ -1454,4 +1454,4 @@ output "alb_dns_name" {
 output "certificate_arn" {
   value = trimspace(data.local_file.cert_arn.content)
 }
- 
+
