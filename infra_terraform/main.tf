@@ -112,7 +112,7 @@ resource "aws_subnet" "private_app_1b" {
 
 resource "aws_subnet" "private_db" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.160/28"
+  cidr_block              = "100.115.58.96/27"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = false
 
@@ -199,7 +199,7 @@ resource "aws_route_table_association" "public_facing_1b" {
 # Add a second private subnet in us-east-1b for high availability
 resource "aws_subnet" "private_db_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.176/28"
+  cidr_block              = "100.115.58.128/27"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
@@ -1598,7 +1598,7 @@ resource "aws_docdb_cluster_instance" "documentdb_instance_1" {
   count              = 1
   identifier         = "docdb-instance-1"
   cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
-  instance_class     = "db.r6g.xlarge"
+  instance_class     = "db.t4g.medium"
   availability_zone  = "${var.region}a"
   promotion_tier     = 0 # Primary writer
 
@@ -1611,7 +1611,7 @@ resource "aws_docdb_cluster_instance" "documentdb_instance_2" {
   count              = 1
   identifier         = "docdb-instance-2"
   cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
-  instance_class     = "db.r6g.xlarge"
+  instance_class     = "db.t4g.medium"
   availability_zone  = "${var.region}b"
   promotion_tier     = 1 # Reader
 
@@ -1624,12 +1624,50 @@ output "certificate_arn" {
   value = trimspace(data.local_file.cert_arn.content)
 }
 
-output "documentdb_cluster_endpoint" {
-  value = aws_docdb_cluster.documentdb_cluster.endpoint
+# VPC and Networking
+output "vpc_id" {
+  value = aws_vpc.main.id
 }
 
-output "documentdb_secret_arn" {
-  value = aws_secretsmanager_secret.documentdb_credentials.arn
+# App Subnets
+output "private_app_subnet_ids" {
+  value = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
+}
+
+# DB Subnets  
+output "private_db_subnet_ids" {
+  value = [aws_subnet.private_db.id, aws_subnet.private_db_1b.id]
+}
+
+# Security Groups
+output "security_group_public_facing" {
+  value = aws_security_group.public_facing.id
+}
+
+output "security_group_private_app" {
+  value = aws_security_group.private_app.id
+}
+
+output "security_group_private_db" {
+  value = aws_security_group.private_db.id
+}
+
+# Target Groups
+output "target_groups" {
+  value = {
+    frontend = aws_lb_target_group.frontend.arn
+    sp       = aws_lb_target_group.sp.arn
+    tk       = aws_lb_target_group.tk.arn
+    sc       = aws_lb_target_group.sc.arn
+    qr       = aws_lb_target_group.qr.arn
+    kb       = aws_lb_target_group.kb.arn
+    fc       = aws_lb_target_group.fc.arn
+    bp       = aws_lb_target_group.bp.arn
+    bm       = aws_lb_target_group.bm.arn
+    bc       = aws_lb_target_group.bc.arn
+    ap       = aws_lb_target_group.ap.arn
+    ct       = aws_lb_target_group.ct.arn
+  }
 }
 
 # VPC Endpoint for CloudWatch Logs
