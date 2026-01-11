@@ -911,6 +911,16 @@ resource "aws_lb_target_group" "ap" {
   }
 }
 
+resource "aws_lb_target_group" "ct" {
+  name     = "tg-ct"
+  port     = 443
+  protocol = "HTTPS"
+  vpc_id   = aws_vpc.main.id
+  health_check {
+    path = "/ct/health"
+  }
+}
+
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.example.arn
   port              = "80"
@@ -1144,6 +1154,25 @@ resource "aws_lb_listener_rule" "ap" {
   condition {
     host_header {
       values = ["portal.example.com"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "ct" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 23
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.ct.arn
+  }
+  condition {
+    path_pattern {
+      values = ["/ct/*"]
+    }
+  }
+  condition {
+    host_header {
+      values = ["api.example.com"]
     }
   }
 }
@@ -1451,7 +1480,128 @@ output "alb_dns_name" {
   value = aws_lb.example.dns_name
 }
 
+# DocumentDB Subnet Group
+resource "aws_docdb_subnet_group" "documentdb_subnet_group" {
+  name        = "docdb-sg"
+  subnet_ids  = [aws_subnet.private_db.id, aws_subnet.private_db_1b.id]
+  description = "DocumentDB subnet group"
+
+  tags = {
+    Name = "docdb-sg"
+  }
+}
+
+# DocumentDB Parameter Group
+resource "aws_docdb_cluster_parameter_group" "documentdb_params" {
+  family      = "docdb4.0"
+  name        = "docdb-params"
+  description = "DocumentDB parameter group"
+
+  parameter {
+    name  = "audit_logs"
+    value = "enabled"
+  }
+
+  parameter {
+    name  = "profiler"
+    value = "enabled"
+  }
+}
+
+# Secrets Manager for DocumentDB credentials
+resource "aws_secretsmanager_secret" "documentdb_credentials" {
+  name        = "docdb/creds"
+  description = "DocumentDB master user credentials"
+}
+
+resource "aws_secretsmanager_secret_version" "documentdb_credentials" {
+  secret_id = aws_secretsmanager_secret.documentdb_credentials.id
+  secret_string = jsonencode({
+    username = "appuser"
+    password = random_password.documentdb_password.result
+  })
+}
+
+resource "random_password" "documentdb_password" {
+  length  = 16
+  special = true
+}
+
+# DocumentDB Cluster
+resource "aws_docdb_cluster" "documentdb_cluster" {
+  cluster_identifier           = "docdb-cluster"
+  engine                       = "docdb"
+  engine_version               = "4.0.0"
+  master_username              = "appuser"
+  master_password              = random_password.documentdb_password.result
+  manage_master_user_password  = false
+  backup_retention_period      = 1
+  preferred_backup_window      = "16:00-16:30"
+  preferred_maintenance_window = "sun:19:00-sun:19:30"
+  skip_final_snapshot          = true
+  deletion_protection          = true
+
+  db_subnet_group_name            = aws_docdb_subnet_group.documentdb_subnet_group.name
+  vpc_security_group_ids          = [aws_security_group.private_db.id]
+  db_cluster_parameter_group_name = aws_docdb_cluster_parameter_group.documentdb_params.name
+
+  storage_encrypted = true
+  kms_key_id        = aws_kms_key.documentdb_key.arn
+
+  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
+
+  tags = {
+    Name = "docdb-cluster"
+  }
+}
+
+# KMS Key for DocumentDB encryption
+resource "aws_kms_key" "documentdb_key" {
+  description             = "KMS key for DocumentDB encryption"
+  deletion_window_in_days = 7
+}
+
+resource "aws_kms_alias" "documentdb_key_alias" {
+  name          = "alias/documentdb-key"
+  target_key_id = aws_kms_key.documentdb_key.key_id
+}
+
+# DocumentDB Cluster Instances
+resource "aws_docdb_cluster_instance" "documentdb_instance_1" {
+  count              = 1
+  identifier         = "docdb-instance-1"
+  cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
+  instance_class     = "db.r6g.xlarge"
+  availability_zone  = "${var.region}a"
+  promotion_tier     = 0 # Primary writer
+
+  tags = {
+    Name = "docdb-instance-1"
+  }
+}
+
+resource "aws_docdb_cluster_instance" "documentdb_instance_2" {
+  count              = 1
+  identifier         = "docdb-instance-2"
+  cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
+  instance_class     = "db.r6g.xlarge"
+  availability_zone  = "${var.region}b"
+  promotion_tier     = 1 # Reader
+
+  tags = {
+    Name = "docdb-instance-2"
+  }
+}
+
 output "certificate_arn" {
   value = trimspace(data.local_file.cert_arn.content)
+}
+
+output "documentdb_cluster_endpoint" {
+  value = aws_docdb_cluster.documentdb_cluster.endpoint
+}
+
+output "documentdb_secret_arn" {
+  value = aws_secretsmanager_secret.documentdb_credentials.arn
 }
 
