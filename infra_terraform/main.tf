@@ -1632,6 +1632,43 @@ output "documentdb_secret_arn" {
   value = aws_secretsmanager_secret.documentdb_credentials.arn
 }
 
+# VPC Endpoint for CloudWatch Logs
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "vpc-endpoints-sg"
+  description = "Security group for VPC endpoints"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "vpc-endpoints-sg"
+  }
+}
+
+resource "aws_vpc_endpoint" "cloudwatch_logs" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.region}.logs"
+  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  vpc_endpoint_type  = "Interface"
+
+  tags = {
+    Name = "cloudwatch-logs-endpoint"
+  }
+}
+
 # AWS Backup for DocumentDB
 resource "aws_backup_vault" "docdb" {
   name        = "docdb-backup-vault"
