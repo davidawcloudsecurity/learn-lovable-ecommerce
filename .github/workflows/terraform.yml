@@ -62,36 +62,19 @@ jobs:
 
       - name: Clean tfstate and Git
         run: |
+          echo "" > state/terraform.tfstate
+          mv terraform.tfstate state                    
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin https://github.com/davidawcloudsecurity/learn-lovable-ecommerce.git
-          
-          # Fetch latest
+          git remote set-url origin ***github.com/davidawcloudsecurity/learn-aws-patch-manager.git                   
           git fetch origin destroy/main
-          
-          # Checkout and FORCE reset to clean state (discard ALL local changes)
           git checkout destroy/main
-          git reset --hard origin/destroy/main
-          
-          # Clean any untracked files if needed
-          git clean -fd
-                   
-          # If there's a terraform.tfstate in current directory, move it
-          if [ -f terraform.tfstate ]; then
-            mv terraform.tfstate state/
-          fi
-          
-          # Stage changes
-          git add state/
-          
-          # Commit if there are changes
-          if ! git diff --staged --quiet; then
-            COMMIT_HASH=$(git rev-parse --short HEAD)
-            git commit -m "clean-${COMMIT_HASH}"
-            git push origin destroy/main
-          else
-            echo "No changes to commit"
-          fi
-                 
+          git merge origin/destroy/main
+          # Get the latest commit hash
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          git add state
+          git commit -m "clean-${COMMIT_HASH}"    
+          git push -u origin          
           pwd
+
         working-directory: infra_terraform
