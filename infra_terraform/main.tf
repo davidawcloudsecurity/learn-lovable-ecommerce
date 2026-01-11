@@ -90,9 +90,9 @@ resource "aws_subnet" "public_facing_1b" {
 
 resource "aws_subnet" "private_app" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.64/27"
+  cidr_block              = "100.115.58.32/28"
   availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = false # temp for ssm
+  map_public_ip_on_launch = false
 
   tags = {
     Name = "private-app-subnet"
@@ -101,7 +101,7 @@ resource "aws_subnet" "private_app" {
 
 resource "aws_subnet" "private_app_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.160/27"
+  cidr_block              = "100.115.58.48/28"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
@@ -112,9 +112,9 @@ resource "aws_subnet" "private_app_1b" {
 
 resource "aws_subnet" "private_db" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.96/27"
-  availability_zone       = "${var.region}b"
-  map_public_ip_on_launch = false # temp for ssm
+  cidr_block              = "100.115.58.160/28"
+  availability_zone       = "${var.region}a"
+  map_public_ip_on_launch = false
 
   tags = {
     Name = "private-db-subnet"
@@ -199,8 +199,8 @@ resource "aws_route_table_association" "public_facing_1b" {
 # Add a second private subnet in us-east-1b for high availability
 resource "aws_subnet" "private_db_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "100.115.58.128/27"
-  availability_zone       = "${var.region}a"
+  cidr_block              = "100.115.58.176/28"
+  availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
   tags = {
@@ -801,8 +801,8 @@ resource "aws_lb" "example" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
   subnets = [
-    aws_subnet.public_facing_1a.id,
-    aws_subnet.public_facing_1b.id
+    aws_subnet.private_app.id,
+    aws_subnet.private_app_1b.id
   ]
   enable_deletion_protection = false
   tags = {
@@ -1566,7 +1566,7 @@ resource "aws_docdb_cluster" "documentdb_cluster" {
   preferred_backup_window      = "16:00-16:30"
   preferred_maintenance_window = "sun:19:00-sun:19:30"
   skip_final_snapshot          = true
-  deletion_protection          = true
+  deletion_protection          = false
 
   db_subnet_group_name            = aws_docdb_subnet_group.documentdb_subnet_group.name
   vpc_security_group_ids          = [aws_security_group.private_db.id]
@@ -1666,6 +1666,33 @@ resource "aws_vpc_endpoint" "cloudwatch_logs" {
 
   tags = {
     Name = "cloudwatch-logs-endpoint"
+  }
+}
+
+# Secrets Manager VPC Endpoint
+resource "aws_vpc_endpoint" "secretsmanager" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.region}.secretsmanager"
+  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
+  security_group_ids = [aws_security_group.vpc_endpoints.id]
+  vpc_endpoint_type  = "Interface"
+
+  tags = {
+    Name = "secretsmanager-endpoint"
+  }
+}
+
+# S3 Gateway Endpoint for internet access (like client)
+resource "aws_vpc_endpoint" "s3_gateway" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.region}.s3"
+  route_table_ids = [
+    aws_route_table.private_app.id,
+    aws_route_table.private_db.id
+  ]
+
+  tags = {
+    Name = "s3-gateway-endpoint"
   }
 }
 
