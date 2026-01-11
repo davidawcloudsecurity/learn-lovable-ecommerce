@@ -795,10 +795,11 @@ resource "aws_lb" "example" {
 }
 
 resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "frontend-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     enabled             = true
     path                = "/"
@@ -812,110 +813,121 @@ resource "aws_lb_target_group" "frontend" {
 
 # Target Groups for 11 services
 resource "aws_lb_target_group" "sp" {
-  name     = "tg-sp"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-sp"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/auth/health"
   }
 }
 
 resource "aws_lb_target_group" "tk" {
-  name     = "tg-tk"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-tk"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/tkt/health"
   }
 }
 
 resource "aws_lb_target_group" "sc" {
-  name     = "tg-sc"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-sc"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/sched/health"
   }
 }
 
 resource "aws_lb_target_group" "qr" {
-  name     = "tg-qr"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-qr"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/qr/health"
   }
 }
 
 resource "aws_lb_target_group" "kb" {
-  name     = "tg-kb"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-kb"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/kb/health"
   }
 }
 
 resource "aws_lb_target_group" "fc" {
-  name     = "tg-fc"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-fc"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/fac/health"
   }
 }
 
 resource "aws_lb_target_group" "bp" {
-  name     = "tg-bp"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-bp"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/proc/health"
   }
 }
 
 resource "aws_lb_target_group" "bm" {
-  name     = "tg-bm"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-bm"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/mgmt/health"
   }
 }
 
 resource "aws_lb_target_group" "bc" {
-  name     = "tg-bc"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-bc"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/cast/health"
   }
 }
 
 resource "aws_lb_target_group" "ap" {
-  name     = "tg-ap"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-ap"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/health"
   }
 }
 
 resource "aws_lb_target_group" "ct" {
-  name     = "tg-ct"
-  port     = 443
-  protocol = "HTTPS"
-  vpc_id   = aws_vpc.main.id
+  name        = "tg-ct"
+  port        = 443
+  protocol    = "HTTPS"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
   health_check {
     path = "/ct/health"
   }
