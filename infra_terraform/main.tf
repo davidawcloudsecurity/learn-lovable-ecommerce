@@ -99,6 +99,17 @@ resource "aws_subnet" "private_app" {
   }
 }
 
+resource "aws_subnet" "private_app_1b" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "100.115.58.160/27"
+  availability_zone       = "${var.region}b"
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "private-app-subnet-1b"
+  }
+}
+
 resource "aws_subnet" "private_db" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "100.115.58.96/27"
@@ -206,6 +217,11 @@ resource "aws_route_table_association" "private_db_1b" {
 
 resource "aws_route_table_association" "private_app" {
   subnet_id      = aws_subnet.private_app.id
+  route_table_id = aws_route_table.private_app.id
+}
+
+resource "aws_route_table_association" "private_app_1b" {
+  subnet_id      = aws_subnet.private_app_1b.id
   route_table_id = aws_route_table.private_app.id
 }
 
