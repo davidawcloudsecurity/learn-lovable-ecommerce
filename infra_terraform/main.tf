@@ -1534,7 +1534,6 @@ resource "aws_docdb_cluster" "documentdb_cluster" {
   engine_version               = "4.0.0"
   master_username              = "appuser"
   master_password              = random_password.documentdb_password.result
-  manage_master_user_password  = false
   backup_retention_period      = 1
   preferred_backup_window      = "16:00-16:30"
   preferred_maintenance_window = "sun:19:00-sun:19:30"
