@@ -46,7 +46,8 @@ jobs:
         working-directory: infra_terraform        
       
       - name: Terraform Plan
-        run: terraform plan -destroy
+      
+        run: terraform state rm aws_secretsmanager_secret.documentdb_credentials;terraform plan -destroy
         working-directory: infra_terraform
 
       - name: Terraform State
