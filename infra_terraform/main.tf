@@ -1604,3 +1604,60 @@ output "documentdb_secret_arn" {
   value = aws_secretsmanager_secret.documentdb_credentials.arn
 }
 
+# AWS Backup for DocumentDB
+resource "aws_backup_vault" "docdb" {
+  name        = "docdb-backup-vault"
+  kms_key_arn = aws_kms_key.documentdb_key.arn
+}
+
+resource "aws_backup_plan" "docdb" {
+  name = "docdb-backup-plan"
+
+  rule {
+    rule_name         = "daily_backup"
+    target_vault_name = aws_backup_vault.docdb.name
+    schedule          = "cron(0 2 * * ? *)" # Daily at 2 AM
+
+    lifecycle {
+      cold_storage_after = 30
+      delete_after       = 365
+    }
+
+    recovery_point_tags = {
+      Environment = "production"
+    }
+  }
+}
+
+resource "aws_iam_role" "backup" {
+  name = "aws-backup-service-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "backup.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "backup" {
+  role       = aws_iam_role.backup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
+}
+
+resource "aws_backup_selection" "docdb" {
+  iam_role_arn = aws_iam_role.backup.arn
+  name         = "docdb-backup-selection"
+  plan_id      = aws_backup_plan.docdb.id
+
+  resources = [
+    aws_docdb_cluster.documentdb_cluster.arn
+  ]
+}
+
