@@ -1538,8 +1538,9 @@ resource "aws_docdb_cluster_parameter_group" "documentdb_params" {
 
 # Secrets Manager for DocumentDB credentials
 resource "aws_secretsmanager_secret" "documentdb_credentials" {
-  name        = "docdb/creds"
-  description = "DocumentDB master user credentials"
+  name                    = "docdb/creds"
+  description             = "DocumentDB master user credentials"
+  recovery_window_in_days = 0
 }
 
 resource "aws_secretsmanager_secret_version" "documentdb_credentials" {
