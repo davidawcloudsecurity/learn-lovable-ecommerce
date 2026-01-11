@@ -66,7 +66,7 @@ jobs:
           mv terraform.tfstate state                    
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git remote set-url origin ***github.com/davidawcloudsecurity/learn-lovable-ecommerce.git                   
+          git remote set-url origin https://github.com/davidawcloudsecurity/learn-lovable-ecommerce.git
           git fetch origin destroy/main
           git checkout destroy/main
           git merge origin/destroy/main
