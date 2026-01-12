@@ -810,6 +810,22 @@ resource "aws_lb" "example" {
   }
 }
 
+# ALB2
+resource "aws_lb" "example2" {
+  name               = "example-alb2"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.public_facing.id]
+  subnets            = [
+    aws_subnet.private_app.id,
+    aws_subnet.private_app_1b.id
+  ]
+  enable_deletion_protection = false
+  tags = {
+    Environment = "dev"
+  }
+}
+
 resource "aws_lb_target_group" "frontend" {
   name        = "frontend-tg"
   port        = 80
