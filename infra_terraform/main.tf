@@ -68,7 +68,7 @@ resource "aws_vpc" "main" {
 # Subnets
 resource "aws_subnet" "public_facing_1a" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.0/28"
+  cidr_block              = "10.0.0.64/28"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = true
 
@@ -79,7 +79,7 @@ resource "aws_subnet" "public_facing_1a" {
 
 resource "aws_subnet" "public_facing_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.16/28"
+  cidr_block              = "10.0.0.80/28"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = true
 
