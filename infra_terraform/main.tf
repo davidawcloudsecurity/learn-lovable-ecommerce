@@ -801,8 +801,8 @@ resource "aws_lb" "example" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
   subnets            = [
-    aws_subnet.private_app.id,
-    aws_subnet.private_app_1b.id
+    aws_subnet.public_facing_1a.id,
+    aws_subnet.public_facing_1b.id
   ]
   enable_deletion_protection = false
   tags = {
@@ -817,8 +817,8 @@ resource "aws_lb" "example2" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
   subnets            = [
-    aws_subnet.private_app.id,
-    aws_subnet.private_app_1b.id
+    aws_subnet.public_facing_1a.id,
+    aws_subnet.public_facing_1b.id
   ]
   enable_deletion_protection = false
   tags = {
@@ -1236,6 +1236,18 @@ resource "aws_cloudfront_distribution" "web_distribution" {
 
     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  origin {
+    domain_name = aws_lb.example.dns_name
+    origin_id   = "ALB-${aws_lb.example.name}"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only"
+      origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
