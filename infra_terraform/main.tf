@@ -1749,6 +1749,31 @@ resource "aws_vpc_endpoint" "secretsmanager" {
   }
 }
 
+# ECR VPC Endpoints
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.region}.ecr.dkr"
+  subnet_ids          = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  vpc_endpoint_type   = "Interface"
+  
+  tags = {
+    Name = "ecr-dkr-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id              = aws_vpc.main.id
+  service_name        = "com.amazonaws.${var.region}.ecr.api"
+  subnet_ids          = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  vpc_endpoint_type   = "Interface"
+  
+  tags = {
+    Name = "ecr-api-endpoint"
+  }
+}
+
 # S3 Gateway Endpoint for internet access (like client)
 resource "aws_vpc_endpoint" "s3_gateway" {
   vpc_id       = aws_vpc.main.id
