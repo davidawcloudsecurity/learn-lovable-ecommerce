@@ -1648,8 +1648,11 @@ resource "aws_secretsmanager_secret" "documentdb_credentials" {
 resource "aws_secretsmanager_secret_version" "documentdb_credentials" {
   secret_id = aws_secretsmanager_secret.documentdb_credentials.id
   secret_string = jsonencode({
-    username = "appuser"
-    password = random_password.documentdb_password.result
+    username         = "appuser"
+    password         = random_password.documentdb_password.result
+    docdb_url        = "mongodb://${aws_docdb_cluster.documentdb_cluster.endpoint}:${aws_docdb_cluster.documentdb_cluster.port}"
+    redis_url        = "redis://${aws_elasticache_replication_group.redis_cluster.primary_endpoint_address}:${aws_elasticache_replication_group.redis_cluster.port}"
+    redis_auth_token = random_password.redis_auth_token.result
   })
 }
 
@@ -2002,6 +2005,12 @@ resource "random_password" "redis_auth_token" {
   length  = 32
   special = false
 }
+
+# Note: AWS Backup does not support ElastiCache
+# ElastiCache Redis uses native backup features:
+# - snapshot_retention_limit = 1 (configured above)
+# - snapshot_window = "16:00-17:00" (configured above)
+# - final_snapshot_identifier for cluster termination backup
 
 # Redis Outputs
 output "redis_primary_endpoint" {
