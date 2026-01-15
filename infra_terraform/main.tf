@@ -2003,42 +2003,6 @@ resource "random_password" "redis_auth_token" {
   special = false
 }
 
-# AWS Backup for Redis
-resource "aws_backup_vault" "redis" {
-  name        = "redis-backup-vault"
-  kms_key_arn = aws_kms_key.documentdb_key.arn
-}
-
-resource "aws_backup_plan" "redis" {
-  name = "redis-backup-plan"
-
-  rule {
-    rule_name         = "daily_backup"
-    target_vault_name = aws_backup_vault.redis.name
-    schedule          = "cron(0 3 * * ? *)" # Daily at 3 AM
-
-    lifecycle {
-      cold_storage_after = 30
-      delete_after       = 365
-    }
-
-    recovery_point_tags = {
-      Environment = "production"
-      Service     = "redis"
-    }
-  }
-}
-
-resource "aws_backup_selection" "redis" {
-  iam_role_arn = aws_iam_role.backup.arn
-  name         = "redis-backup-selection"
-  plan_id      = aws_backup_plan.redis.id
-
-  resources = [
-    aws_elasticache_replication_group.redis_cluster.arn
-  ]
-}
-
 # Redis Outputs
 output "redis_primary_endpoint" {
   value = aws_elasticache_replication_group.redis_cluster.primary_endpoint_address
