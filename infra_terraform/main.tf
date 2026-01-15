@@ -1918,4 +1918,133 @@ resource "aws_backup_selection" "docdb" {
     aws_docdb_cluster.documentdb_cluster.arn
   ]
 }
+
+# ElastiCache Redis Subnets
+resource "aws_subnet" "private_redis_1a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.0.160/28"
+  availability_zone = "${var.region}a"
+  
+  tags = {
+    Name = "private-redis-subnet-1a"
+  }
+}
+
+resource "aws_subnet" "private_redis_1b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.0.176/28"
+  availability_zone = "${var.region}b"
+  
+  tags = {
+    Name = "private-redis-subnet-1b"
+  }
+}
+
+# Route table associations for Redis subnets
+resource "aws_route_table_association" "private_redis_1a" {
+  subnet_id      = aws_subnet.private_redis_1a.id
+  route_table_id = aws_route_table.private_db.id
+}
+
+resource "aws_route_table_association" "private_redis_1b" {
+  subnet_id      = aws_subnet.private_redis_1b.id
+  route_table_id = aws_route_table.private_db.id
+}
+
+# ElastiCache Redis Cluster with Backup Configuration
+resource "aws_elasticache_subnet_group" "redis_subnet_group" {
+  name       = "redis-subnet-group"
+  subnet_ids = [aws_subnet.private_redis_1a.id, aws_subnet.private_redis_1b.id]
+  
+  tags = {
+    Name = "redis-subnet-group"
+  }
+}
+
+resource "aws_elasticache_replication_group" "redis_cluster" {
+  replication_group_id         = "dbs-elasticache-ecommerce-cluster"
+  description                  = "Redis cluster for ecommerce application"
+  
+  # Configuration matching the case cluster
+  node_type                    = "cache.t2.micro"
+  port                        = 6379
+  parameter_group_name        = "default.redis7"
+  
+  # Multi-AZ and HA configuration
+  num_cache_clusters          = 2
+  automatic_failover_enabled  = true
+  multi_az_enabled           = true
+  preferred_cache_cluster_azs = ["${var.region}a", "${var.region}b"]
+  
+  # Security configuration
+  subnet_group_name          = aws_elasticache_subnet_group.redis_subnet_group.name
+  security_group_ids         = [aws_security_group.private_db.id]
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  auth_token                 = random_password.redis_auth_token.result
+  
+  # Backup configuration
+  snapshot_retention_limit   = 1
+  snapshot_window           = "16:00-17:00"
+  final_snapshot_identifier = "dbs-elasticache-ecommerce-cluster-final-snapshot"
+  
+  # Maintenance
+  maintenance_window        = "sun:05:00-sun:06:00"
+  auto_minor_version_upgrade = true
+  
+  tags = {
+    Name = "dbs-elasticache-ecommerce-cluster"
+    Environment = "production"
+  }
+}
+
+resource "random_password" "redis_auth_token" {
+  length  = 32
+  special = false
+}
+
+# AWS Backup for Redis
+resource "aws_backup_vault" "redis" {
+  name        = "redis-backup-vault"
+  kms_key_arn = aws_kms_key.documentdb_key.arn
+}
+
+resource "aws_backup_plan" "redis" {
+  name = "redis-backup-plan"
+
+  rule {
+    rule_name         = "daily_backup"
+    target_vault_name = aws_backup_vault.redis.name
+    schedule          = "cron(0 3 * * ? *)"  # Daily at 3 AM
+
+    lifecycle {
+      cold_storage_after = 30
+      delete_after       = 365
+    }
+
+    recovery_point_tags = {
+      Environment = "production"
+      Service     = "redis"
+    }
+  }
+}
+
+resource "aws_backup_selection" "redis" {
+  iam_role_arn = aws_iam_role.backup.arn
+  name         = "redis-backup-selection"
+  plan_id      = aws_backup_plan.redis.id
+
+  resources = [
+    aws_elasticache_replication_group.redis_cluster.arn
+  ]
+}
+
+# Redis Outputs
+output "redis_primary_endpoint" {
+  value = aws_elasticache_replication_group.redis_cluster.primary_endpoint_address
+}
+
+output "redis_reader_endpoint" {
+  value = aws_elasticache_replication_group.redis_cluster.reader_endpoint_address
+}
  
