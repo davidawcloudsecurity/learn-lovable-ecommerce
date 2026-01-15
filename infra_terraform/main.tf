@@ -1583,6 +1583,11 @@ RUN echo 'server { \
         return 200 "healthy\\n"; \
         add_header Content-Type text/plain; \
     } \
+    location ~ ^/.*/health$ { \
+        access_log off; \
+        return 200 "healthy\\n"; \
+        add_header Content-Type text/plain; \
+    } \
 }' > /etc/nginx/conf.d/default.conf
 
 COPY . /usr/share/nginx/html
