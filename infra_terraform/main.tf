@@ -1966,7 +1966,7 @@ resource "aws_elasticache_replication_group" "redis_cluster" {
   description          = "Redis cluster for ecommerce application"
 
   # Configuration matching the case cluster
-  node_type            = "cache.t2.micro"
+  node_type            = "cache.t3.micro"
   port                 = 6379
   parameter_group_name = "default.redis7"
 
