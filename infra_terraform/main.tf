@@ -1570,7 +1570,10 @@ RUN mkdir -p /etc/ssl/certs /etc/ssl/private && \
 
 RUN echo 'server { \
     listen 80; \
+    listen 443 ssl; \
     server_name localhost; \
+    ssl_certificate /etc/ssl/certs/nginx-selfsigned.crt; \
+    ssl_certificate_key /etc/ssl/private/nginx-selfsigned.key; \
     location / { \
         root /usr/share/nginx/html; \
         index index.html; \
