@@ -2058,4 +2058,16 @@ resource "aws_route53_record" "portal" {
     evaluate_target_health = true
   }
 }
+
+resource "aws_route53_record" "public" {
+  zone_id = aws_route53_zone.private.zone_id
+  name    = "public"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.web_distribution.domain_name
+    zone_id                = aws_cloudfront_distribution.web_distribution.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
  
