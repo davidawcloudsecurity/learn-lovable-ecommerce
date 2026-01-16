@@ -2021,3 +2021,41 @@ output "redis_reader_endpoint" {
   value = aws_elasticache_replication_group.redis_cluster.reader_endpoint_address
 }
 
+# Private Hosted Zone for example.com
+resource "aws_route53_zone" "private" {
+  name = "example.com"
+
+  vpc {
+    vpc_id = aws_vpc.main.id
+  }
+
+  tags = {
+    Name = "example.com private zone"
+  }
+}
+
+# DNS Records pointing to ALB
+resource "aws_route53_record" "api" {
+  zone_id = aws_route53_zone.private.zone_id
+  name    = "api"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.example.dns_name
+    zone_id                = aws_lb.example.zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "portal" {
+  zone_id = aws_route53_zone.private.zone_id
+  name    = "portal"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.example.dns_name
+    zone_id                = aws_lb.example.zone_id
+    evaluate_target_health = true
+  }
+}
+
