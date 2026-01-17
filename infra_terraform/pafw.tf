@@ -64,9 +64,7 @@ resource "aws_instance" "pafw" {
   subnet_id              = data.aws_subnets.public.ids[0]
   vpc_security_group_ids = [aws_security_group.pafw_sg.id]
   
-  iam_instance_profile {
-    name = aws_iam_instance_profile.pafw_profile.name
-  }
+  iam_instance_profile = aws_iam_instance_profile.pafw_profile.name
   
   user_data = base64encode(<<-EOF
     <powershell>
