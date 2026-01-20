@@ -1861,8 +1861,7 @@ resource "aws_backup_plan" "main" {
   rule {
     rule_name         = "daily_backup"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 22 * * ? *)"  # Daily at 10 PM UTC
-
+	schedule = "cron(0 0 * * ? *)"   # Daily at 12 AM UTC (midnight)
     lifecycle {
       delete_after = 365
     }
