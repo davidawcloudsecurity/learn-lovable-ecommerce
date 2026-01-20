@@ -1849,27 +1849,22 @@ resource "aws_vpc_endpoint" "s3_gateway" {
   }
 }
 
-# AWS Backup for DocumentDB
-resource "aws_backup_vault" "docdb" {
-  name        = "docdb-backup-vault"
+# AWS Backup
+resource "aws_backup_vault" "main" {
+  name        = "main-backup-vault"
   kms_key_arn = aws_kms_key.documentdb_key.arn
 }
 
-resource "aws_backup_plan" "docdb" {
-  name = "docdb-backup-plan"
+resource "aws_backup_plan" "main" {
+  name = "main-backup-plan"
 
   rule {
     rule_name         = "daily_backup"
-    target_vault_name = aws_backup_vault.docdb.name
-    schedule          = "cron(0 2 * * ? *)" # Daily at 2 AM
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 22 * * ? *)" # Daily at 10 PM UTC
 
     lifecycle {
-      cold_storage_after = 30
-      delete_after       = 365
-    }
-
-    recovery_point_tags = {
-      Environment = "production"
+      delete_after = 365
     }
   }
 }
@@ -1896,14 +1891,19 @@ resource "aws_iam_role_policy_attachment" "backup" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup"
 }
 
-resource "aws_backup_selection" "docdb" {
+resource "aws_backup_selection" "all" {
   iam_role_arn = aws_iam_role.backup.arn
-  name         = "docdb-backup-selection"
-  plan_id      = aws_backup_plan.docdb.id
+  name         = "All"
+  plan_id      = aws_backup_plan.main.id
 
-  resources = [
-    aws_docdb_cluster.documentdb_cluster.arn
-  ]
+  resources = ["*"]
+
+  condition {
+    string_equals {
+      key   = "aws:ResourceTag/Monthly-Backup"
+      value = "Y"
+    }
+  }
 }
 
 # ElastiCache Redis Subnets
