@@ -13,41 +13,6 @@ permissions:
       id-token: write   # This is required for requesting the JWT
       contents: write    # This is required for actions/checkout
 jobs:
-  sonarqube-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Full history for better analysis
-      
-      - name: Verify Secrets
-        run: |
-          echo "Checking if secrets are set..."
-          if [ -z "${{ secrets.SONAR_TOKEN }}" ]; then
-            echo "ERROR: SONAR_TOKEN is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SONAR_HOST_URL }}" ]; then
-            echo "ERROR: SONAR_HOST_URL is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.SONAR_PROJECT_KEY }}" ]; then
-            echo "ERROR: SONAR_PROJECT_KEY is not set"
-            exit 1
-          fi
-          echo "All secrets are set"
-          echo "SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}"
-      
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
-
   AssumeRoleAndCallIdentity:
     runs-on: ubuntu-latest
     steps:
@@ -56,7 +21,7 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1.7.0
         with:
-          role-to-assume: arn:aws:iam::762595429056:role/GithubActions #change to reflect your IAM role's ARN
+          role-to-assume: arn:aws:iam::762595429056:role/GithubActions #change to reflect your IAM role’s ARN
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
 
@@ -148,3 +113,4 @@ jobs:
             aws iam delete-instance-profile --instance-profile-name $(aws iam list-instance-profiles --query InstanceProfiles[*].InstanceProfileName | grep AmazonSSMManagedInstanceProfile | sed 's/[",]//g')
           fi
         working-directory: infra_terraform
+ 
