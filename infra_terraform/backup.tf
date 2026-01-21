@@ -12,7 +12,25 @@ resource "aws_backup_plan" "main" {
     target_vault_name = aws_backup_vault.main.name
     schedule          = "cron(0 0 * * ? *)"   # Daily at 12 AM UTC (midnight)
     lifecycle {
-      delete_after = 365
+      delete_after = 14
+    }
+  }
+
+  rule {
+    rule_name         = "weekly_backup"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 0 ? * SUN *)"   # Weekly on Sunday at 12 AM UTC
+    lifecycle {
+      delete_after = 30
+    }
+  }
+
+  rule {
+    rule_name         = "monthly_backup"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 0 1 * ? *)"   # Monthly on 1st day at 12 AM UTC
+    lifecycle {
+      delete_after = 395
     }
   }
 }
