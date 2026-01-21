@@ -13,6 +13,20 @@ permissions:
       id-token: write   # This is required for requesting the JWT
       contents: write    # This is required for actions/checkout
 jobs:
+  sonarqube-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Full history for better analysis
+      
+      - name: SonarQube Scan
+        uses: sonarsource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
   AssumeRoleAndCallIdentity:
     runs-on: ubuntu-latest
     steps:
