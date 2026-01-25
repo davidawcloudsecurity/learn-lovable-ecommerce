@@ -37,7 +37,7 @@ resource "aws_backup_plan" "main" {
   rule {
     rule_name         = "DailyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(12 5 ? * * *)"   # Daily at 2AM SGT
+    schedule          = "cron(17 5 ? * * *)"   # Daily at 2AM SGT
     lifecycle {
       cold_storage_after = 30
       delete_after       = 120
