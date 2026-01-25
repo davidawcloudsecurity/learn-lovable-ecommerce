@@ -4,33 +4,63 @@ resource "aws_backup_vault" "main" {
   kms_key_arn = aws_kms_key.documentdb_key.arn
 }
 
+resource "aws_backup_vault_policy" "main" {
+  backup_vault_name = aws_backup_vault.main.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyBackupDeletion"
+        Effect = "Deny"
+        Principal = "*"
+        Action = [
+          "backup:DeleteBackupVault",
+          "backup:DeleteRecoveryPoint"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_backup_vault_lock_configuration" "main" {
+  backup_vault_name           = aws_backup_vault.main.name
+  changeable_for_days         = 30
+  min_retention_days          = 90
+  max_retention_days          = 2555
+}
+
 resource "aws_backup_plan" "main" {
   name = "main-backup-plan"
 
   rule {
-    rule_name         = "daily_backup"
+    rule_name         = "DailyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 0 * * ? *)"   # Daily at 12 AM UTC (midnight)
+    schedule          = "cron(0 2 ? * * *)"   # Daily at 2AM SGT
     lifecycle {
-      delete_after = 14
+      cold_storage_after = 30
+      delete_after       = 120
     }
   }
 
   rule {
-    rule_name         = "weekly_backup"
+    rule_name         = "WeeklyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 0 ? * SUN *)"   # Weekly on Sunday at 12 AM UTC
+    schedule          = "cron(0 3 ? * SUN *)"   # Weekly on Sunday at 3AM SGT
     lifecycle {
-      delete_after = 30
+      cold_storage_after = 90
+      delete_after       = 365
     }
   }
 
   rule {
-    rule_name         = "monthly_backup"
+    rule_name         = "MonthlyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 0 1 * ? *)"   # Monthly on 1st day at 12 AM UTC
+    schedule          = "cron(0 4 1 * ? *)"   # First day of every month at 4AM SGT
     lifecycle {
-      delete_after = 395
+      cold_storage_after = 90
+      delete_after       = 2555
     }
   }
 }
