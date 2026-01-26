@@ -83,7 +83,6 @@ resource "aws_db_instance" "postgres" {
   allocated_storage     = 400
   max_allocated_storage = 500
   storage_type         = "gp3"
-  iops                 = 3000
   storage_encrypted    = true
   kms_key_id          = aws_kms_key.rds_key.arn
   
