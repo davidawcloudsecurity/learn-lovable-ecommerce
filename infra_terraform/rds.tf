@@ -90,7 +90,6 @@ resource "aws_db_instance" "postgres" {
   db_subnet_group_name   = aws_db_subnet_group.postgres_subnet_group.name
   vpc_security_group_ids = [aws_security_group.private_db.id]
   publicly_accessible    = false
-  availability_zone      = "${var.region}a"
   multi_az              = true
   
   # Backup configuration (matching existing + case requirements)
