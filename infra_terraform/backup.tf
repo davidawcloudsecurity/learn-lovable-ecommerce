@@ -1,34 +1,7 @@
 # AWS Backup Configuration
 resource "aws_backup_vault" "main" {
   name        = "main-backup-vault"
-  kms_key_arn = aws_kms_key.documentdb_key.arn
-}
-
-resource "aws_backup_vault_policy" "main" {
-  backup_vault_name = aws_backup_vault.main.name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "DenyBackupDeletion"
-        Effect = "Deny"
-        Principal = "*"
-        Action = [
-          "backup:DeleteBackupVault",
-          "backup:DeleteRecoveryPoint"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_backup_vault_lock_configuration" "main" {
-  backup_vault_name           = aws_backup_vault.main.name
-  changeable_for_days         = 30
-  min_retention_days          = 90
-  max_retention_days          = 2555
+  kms_key_arn = aws_kms_key.rds_key.arn
 }
 
 resource "aws_backup_plan" "main" {
@@ -37,7 +10,7 @@ resource "aws_backup_plan" "main" {
   rule {
     rule_name         = "DailyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(25 5 ? * * *)"   # Daily at 2AM SGT
+    schedule          = "cron(25 5 ? * * *)"
     lifecycle {
       cold_storage_after = 30
       delete_after       = 120
@@ -47,7 +20,7 @@ resource "aws_backup_plan" "main" {
   rule {
     rule_name         = "WeeklyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 3 ? * SUN *)"   # Weekly on Sunday at 3AM SGT
+    schedule          = "cron(0 3 ? * SUN *)"
     lifecycle {
       cold_storage_after = 90
       delete_after       = 365
@@ -57,7 +30,7 @@ resource "aws_backup_plan" "main" {
   rule {
     rule_name         = "MonthlyBackups"
     target_vault_name = aws_backup_vault.main.name
-    schedule          = "cron(0 4 1 * ? *)"   # First day of every month at 4AM SGT
+    schedule          = "cron(0 4 1 * ? *)"
     lifecycle {
       cold_storage_after = 90
       delete_after       = 2555
@@ -101,9 +74,3 @@ resource "aws_backup_selection" "all" {
     }
   }
 }
-
-# Note: AWS Backup does not support ElastiCache
-# ElastiCache Redis uses native backup features:
-# - snapshot_retention_limit = 1 (configured in main.tf)
-# - snapshot_window = "16:00-17:00" (configured in main.tf)
-# - final_snapshot_identifier for cluster termination backup
