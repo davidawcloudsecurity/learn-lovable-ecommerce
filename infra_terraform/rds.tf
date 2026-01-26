@@ -80,7 +80,7 @@ resource "aws_db_instance" "postgres" {
   password = random_password.postgres_password.result
   
   # Storage configuration (matching existing)
-  allocated_storage     = 75
+  allocated_storage     = 400
   max_allocated_storage = 500
   storage_type         = "gp3"
   iops                 = 3000
