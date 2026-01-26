@@ -84,7 +84,6 @@ resource "aws_db_instance" "postgres" {
   max_allocated_storage = 500
   storage_type         = "gp3"
   iops                 = 3000
-  storage_throughput   = 125
   storage_encrypted    = true
   kms_key_id          = aws_kms_key.rds_key.arn
   
@@ -336,13 +335,11 @@ resource "aws_db_proxy" "postgres_proxy" {
     auth_scheme = "SECRETS"
     secret_arn  = aws_secretsmanager_secret.postgres_credentials.arn
     iam_auth    = "DISABLED"
-    client_password_auth_type = "POSTGRES_SCRAM_SHA_256"
   }
   auth {
     auth_scheme = "SECRETS"
     secret_arn  = aws_secretsmanager_secret.backend_user_credentials.arn
     iam_auth    = "DISABLED"
-    client_password_auth_type = "POSTGRES_SCRAM_SHA_256"
   }
   role_arn               = aws_iam_role.rds_proxy_role.arn
   vpc_subnet_ids         = [aws_subnet.private_db.id, aws_subnet.private_db_1b.id]
