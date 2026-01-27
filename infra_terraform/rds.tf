@@ -366,7 +366,7 @@ resource "aws_db_proxy_default_target_group" "postgres_proxy_target" {
 }
 
 resource "aws_db_proxy_target" "postgres_proxy_target" {
-  db_instance_identifier = aws_db_instance.postgres.id
+  db_instance_identifier = aws_db_instance.postgres.identifier
   db_proxy_name          = aws_db_proxy.postgres_proxy.name
   target_group_name      = aws_db_proxy_default_target_group.postgres_proxy_target.name
 }
