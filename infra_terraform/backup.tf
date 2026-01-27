@@ -39,7 +39,7 @@ resource "aws_backup_plan" "main" {
 }
 
 resource "aws_iam_role" "backup" {
-  name = "aws-backup-service-role"
+  name = "aws-backup-service-role-2"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
