@@ -3,7 +3,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "4.23.0"
+      version = "~> 5.0"
     }
   }
 }
@@ -408,56 +408,7 @@ resource "aws_lb" "example" {
   }
 }
 
-resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-}
 
-resource "aws_lb_target_group" "backend" {
-  name     = "backend-tg"
-  port     = 3001
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-
-  health_check {
-    enabled             = true
-    path                = "/api/search"
-    interval            = 30
-    timeout             = 5
-    unhealthy_threshold = 2
-    healthy_threshold   = 5
-    matcher             = "200-399"
-  }
-}
-
-resource "aws_lb_listener" "example" {
-  load_balancer_arn = aws_lb.example.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-}
-
-resource "aws_lb_listener_rule" "api_rule" {
-  listener_arn = aws_lb_listener.example.arn
-  priority     = 10
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api*"]
-    }
-  }
-}
 
 # WORDPRESS LAUNCH TEMPLATE
 resource "aws_launch_template" "wordpress" {
@@ -854,18 +805,33 @@ resource "aws_wafv2_web_acl" "alb_waf" {
   }
 }
 
-# Associate WAF with ALB
+# Associate WAF with ALB (not NLB, as NLB doesn't support WAF)
 resource "aws_wafv2_web_acl_association" "alb_waf" {
   resource_arn = aws_lb.example.arn
   web_acl_arn  = aws_wafv2_web_acl.alb_waf.arn
 }
 
-# ALB
+# ALB (now internal, behind NLB)
 resource "aws_lb" "example" {
   name               = "example-alb"
-  internal           = false
+  internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
+  subnets            = [
+    aws_subnet.private_app.id,
+    aws_subnet.private_app_1b.id
+  ]
+  enable_deletion_protection = false
+  tags = {
+    Environment = "dev"
+  }
+}
+
+# Network Load Balancer (internet-facing)
+resource "aws_lb" "nlb" {
+  name               = "example-network-lb"
+  internal           = false
+  load_balancer_type = "network"
   subnets            = [
     aws_subnet.public_facing_1a.id,
     aws_subnet.public_facing_1b.id
@@ -876,6 +842,43 @@ resource "aws_lb" "example" {
   }
 }
 
+resource "aws_lb_target_group" "alb_port_80" {
+  name        = "example-alb-80"
+  port        = 80
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "alb"
+  health_check {
+    enabled             = true
+    path                = "/"
+    interval            = 30
+    timeout             = 6
+    unhealthy_threshold = 3
+    healthy_threshold   = 3
+    matcher             = "200-399"
+    protocol            = "HTTP"
+  }
+}
+
+resource "aws_lb_target_group" "alb_port_443" {
+  name        = "example-alb-443"
+  port        = 443
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "alb"
+  health_check {
+    enabled             = true
+    path                = "/"
+    interval            = 30
+    timeout             = 10
+    unhealthy_threshold = 3
+    healthy_threshold   = 3
+    matcher             = "200-399"
+    protocol            = "HTTPS"
+  }
+}
+
+# ALB target group for actual application
 resource "aws_lb_target_group" "frontend" {
   name        = "frontend-tg"
   port        = 80
@@ -885,143 +888,52 @@ resource "aws_lb_target_group" "frontend" {
   health_check {
     enabled             = true
     path                = "/"
-    interval            = 30
-    timeout             = 5
+    interval            = 36
+    timeout             = 35
     unhealthy_threshold = 2
     healthy_threshold   = 5
     matcher             = "200"
   }
 }
 
-# Target Groups for 11 services
-resource "aws_lb_target_group" "sp" {
-  name        = "tg-sp"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/auth/health"
+
+
+# NLB Listeners
+resource "aws_lb_listener" "nlb_http" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = "80"
+  protocol          = "TCP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_port_80.arn
   }
 }
 
-resource "aws_lb_target_group" "tk" {
-  name        = "tg-tk"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/tkt/health"
+resource "aws_lb_listener" "nlb_https" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = "443"
+  protocol          = "TCP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_port_443.arn
   }
 }
 
-resource "aws_lb_target_group" "sc" {
-  name        = "tg-sc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/sched/health"
-  }
-}
-
-resource "aws_lb_target_group" "qr" {
-  name        = "tg-qr"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/qr/health"
-  }
-}
-
-resource "aws_lb_target_group" "kb" {
-  name        = "tg-kb"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/kb/health"
-  }
-}
-
-resource "aws_lb_target_group" "fc" {
-  name        = "tg-fc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/fac/health"
-  }
-}
-
-resource "aws_lb_target_group" "bp" {
-  name        = "tg-bp"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/proc/health"
-  }
-}
-
-resource "aws_lb_target_group" "bm" {
-  name        = "tg-bm"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/mgmt/health"
-  }
-}
-
-resource "aws_lb_target_group" "bc" {
-  name        = "tg-bc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/cast/health"
-  }
-}
-
-resource "aws_lb_target_group" "ap" {
-  name        = "tg-ap"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/health"
-  }
-}
-
-resource "aws_lb_target_group" "ct" {
-  name        = "tg-ct"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/ct/health"
-  }
-}
-
+# ALB Listeners
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.example.arn
   port              = "80"
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    type = "redirect"
+    redirect {
+      protocol    = "HTTPS"
+      port        = "443"
+      host        = "#{host}"
+      path        = "/#{path}"
+      query       = "#{query}"
+      status_code = "HTTP_302"
+    }
   }
 }
 
@@ -1029,247 +941,30 @@ resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.example.arn
   port              = "443"
   protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
   certificate_arn   = trimspace(data.local_file.cert_arn.content)
   default_action {
     type = "fixed-response"
     fixed_response {
       status_code  = "200"
-      content_type = "text/plain"
+      content_type = "text/html"
+      message_body = "<body>\n  <div style=\"width:100%; margin:0 auto;\">\n    <h1>Please connect https://www.example.com</h1>\n  </div>\n</body>\n"
     }
   }
 }
 
-# Listener Rules
-resource "aws_lb_listener_rule" "sp" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 1
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.sp.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/auth/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
+# NLB target group attachments (ALB as target)
+resource "aws_lb_target_group_attachment" "alb_80" {
+  target_group_arn = aws_lb_target_group.alb_port_80.arn
+  target_id        = aws_lb.example.arn
 }
 
-resource "aws_lb_listener_rule" "tk" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 11
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.tk.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/tkt/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
+resource "aws_lb_target_group_attachment" "alb_443" {
+  target_group_arn = aws_lb_target_group.alb_port_443.arn
+  target_id        = aws_lb.example.arn
 }
 
-resource "aws_lb_listener_rule" "sc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 12
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.sc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/sched/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
 
-resource "aws_lb_listener_rule" "qr" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 13
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.qr.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/qr/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "kb" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 15
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.kb.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/kb/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "fc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 16
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.fc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/fac/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bp" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 18
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bp.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/proc/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bm" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 19
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bm.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/mgmt/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 20
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/cast/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "redirect" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 21
-  action {
-    type = "redirect"
-    redirect {
-      protocol    = "HTTPS"
-      port        = "443"
-      host        = "api.example.com"
-      path        = "/proc/#{path}"
-      query       = "#{query}"
-      status_code = "HTTP_301"
-    }
-  }
-  condition {
-    path_pattern {
-      values = ["/link/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "ap" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 22
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ap.arn
-  }
-  condition {
-    host_header {
-      values = ["portal.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "ct" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 23
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ct.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/ct/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
 
 # CloudFront Origin Access Identity for S3
 resource "aws_cloudfront_origin_access_identity" "s3_oai" {
@@ -1289,9 +984,20 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     }
   }
 
+# CloudFront Distribution with NLB origin
+resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
-    domain_name = aws_lb.example.dns_name
-    origin_id   = "ALB-${aws_lb.example.name}"
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "S3-${aws_s3_bucket.product_images.bucket}"
+
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  origin {
+    domain_name = aws_lb.nlb.dns_name
+    origin_id   = "NetworkLB-${aws_lb.nlb.name}"
 
     custom_origin_config {
       http_port              = 80
@@ -1590,125 +1296,16 @@ EOF
 }
 
 # Outputs
+# Outputs
+output "network_lb_dns_name" {
+  value = aws_lb.nlb.dns_name
+}
+
 output "alb_dns_name" {
   value = aws_lb.example.dns_name
 }
 
-# DocumentDB Subnet Group
-resource "aws_docdb_subnet_group" "documentdb_subnet_group" {
-  name       = "docdb-sg"
-  subnet_ids = [aws_subnet.private_db.id, aws_subnet.private_db_1b.id]
-  description = "DocumentDB subnet group"
 
-  tags = {
-    Name = "docdb-sg"
-  }
-}
-
-# DocumentDB Parameter Group
-resource "aws_docdb_cluster_parameter_group" "documentdb_params" {
-  family      = "docdb4.0"
-  name        = "docdb-params"
-  description = "DocumentDB parameter group"
-
-  parameter {
-    name  = "audit_logs"
-    value = "enabled"
-  }
-
-  parameter {
-    name  = "profiler"
-    value = "enabled"
-  }
-}
-
-# Secrets Manager for DocumentDB credentials
-resource "aws_secretsmanager_secret" "documentdb_credentials" {
-  name        = "docdb/creds2"
-  description = "DocumentDB master user credentials"
-  recovery_window_in_days = 0
-}
-
-resource "aws_secretsmanager_secret_version" "documentdb_credentials" {
-  secret_id = aws_secretsmanager_secret.documentdb_credentials.id
-  secret_string = jsonencode({
-    username = "appuser"
-    password = random_password.documentdb_password.result
-    docdb_url = "mongodb://${aws_docdb_cluster.documentdb_cluster.endpoint}:${aws_docdb_cluster.documentdb_cluster.port}"
-    redis_url = "redis://${aws_elasticache_replication_group.redis_cluster.primary_endpoint_address}:${aws_elasticache_replication_group.redis_cluster.port}"
-    redis_auth_token = random_password.redis_auth_token.result
-  })
-}
-
-resource "random_password" "documentdb_password" {
-  length  = 16
-  special = true
-}
-
-# DocumentDB Cluster
-resource "aws_docdb_cluster" "documentdb_cluster" {
-  cluster_identifier      = "docdb-cluster"
-  engine                 = "docdb"
-  engine_version         = "4.0.0"
-  master_username        = "appuser"
-  master_password        = random_password.documentdb_password.result
-  backup_retention_period = 1
-  preferred_backup_window = "16:00-16:30"
-  preferred_maintenance_window = "sun:19:00-sun:19:30"
-  skip_final_snapshot    = true
-  deletion_protection    = false
-  
-  db_subnet_group_name   = aws_docdb_subnet_group.documentdb_subnet_group.name
-  vpc_security_group_ids = [aws_security_group.private_db.id]
-  db_cluster_parameter_group_name = aws_docdb_cluster_parameter_group.documentdb_params.name
-  
-  storage_encrypted = true
-  kms_key_id       = aws_kms_key.documentdb_key.arn
-  
-  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
-
-  tags = {
-    Name = "docdb-cluster"
-  }
-}
-
-# KMS Key for DocumentDB encryption
-resource "aws_kms_key" "documentdb_key" {
-  description             = "KMS key for DocumentDB encryption"
-  deletion_window_in_days = 7
-}
-
-resource "aws_kms_alias" "documentdb_key_alias" {
-  name          = "alias/documentdb-key"
-  target_key_id = aws_kms_key.documentdb_key.key_id
-}
-
-# DocumentDB Cluster Instances
-resource "aws_docdb_cluster_instance" "documentdb_instance_1" {
-  count              = 1
-  identifier         = "docdb-instance-1"
-  cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
-  instance_class     = "db.t4g.medium"
-  availability_zone  = "${var.region}a"
-  promotion_tier     = 0  # Primary writer
-
-  tags = {
-    Name = "docdb-instance-1"
-  }
-}
-
-resource "aws_docdb_cluster_instance" "documentdb_instance_2" {
-  count              = 1
-  identifier         = "docdb-instance-2"
-  cluster_identifier = aws_docdb_cluster.documentdb_cluster.id
-  instance_class     = "db.t4g.medium"
-  availability_zone  = "${var.region}b"
-  promotion_tier     = 1  # Reader
-
-  tags = {
-    Name = "docdb-instance-2"
-  }
-}
 
 output "certificate_arn" {
   value = trimspace(data.local_file.cert_arn.content)
@@ -1746,17 +1343,8 @@ output "security_group_private_db" {
 output "target_groups" {
   value = {
     frontend = aws_lb_target_group.frontend.arn
-    sp = aws_lb_target_group.sp.arn
-    tk = aws_lb_target_group.tk.arn
-    sc = aws_lb_target_group.sc.arn
-    qr = aws_lb_target_group.qr.arn
-    kb = aws_lb_target_group.kb.arn
-    fc = aws_lb_target_group.fc.arn
-    bp = aws_lb_target_group.bp.arn
-    bm = aws_lb_target_group.bm.arn
-    bc = aws_lb_target_group.bc.arn
-    ap = aws_lb_target_group.ap.arn
-    ct = aws_lb_target_group.ct.arn
+    alb_port_80 = aws_lb_target_group.alb_port_80.arn
+    alb_port_443 = aws_lb_target_group.alb_port_443.arn
   }
 }
 
@@ -1851,104 +1439,7 @@ resource "aws_vpc_endpoint" "s3_gateway" {
 
 # AWS Backup resources moved to backup.tf
 
-# ElastiCache Redis Subnets
-resource "aws_subnet" "private_redis_1a" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.0.160/28"
-  availability_zone = "${var.region}a"
-  
-  tags = {
-    Name = "private-redis-subnet-1a"
-  }
-}
 
-resource "aws_subnet" "private_redis_1b" {
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = "10.0.0.176/28"
-  availability_zone = "${var.region}b"
-  
-  tags = {
-    Name = "private-redis-subnet-1b"
-  }
-}
-
-# Route table associations for Redis subnets
-resource "aws_route_table_association" "private_redis_1a" {
-  subnet_id      = aws_subnet.private_redis_1a.id
-  route_table_id = aws_route_table.private_db.id
-}
-
-resource "aws_route_table_association" "private_redis_1b" {
-  subnet_id      = aws_subnet.private_redis_1b.id
-  route_table_id = aws_route_table.private_db.id
-}
-
-# ElastiCache Redis Cluster with Backup Configuration
-resource "aws_elasticache_subnet_group" "redis_subnet_group" {
-  name       = "redis-subnet-group"
-  subnet_ids = [aws_subnet.private_redis_1a.id, aws_subnet.private_redis_1b.id]
-  
-  tags = {
-    Name = "redis-subnet-group"
-  }
-}
-
-resource "aws_elasticache_replication_group" "redis_cluster" {
-  replication_group_id         = "dbs-elasticache-ecommerce-cluster"
-  description                  = "Redis cluster for ecommerce application"
-  
-  # Configuration matching the case cluster
-  node_type                    = "cache.t3.micro"
-  port                        = 6379
-  parameter_group_name        = "default.redis7"
-  
-  # Multi-AZ and HA configuration
-  num_cache_clusters          = 2
-  automatic_failover_enabled  = true
-  multi_az_enabled           = true
-  preferred_cache_cluster_azs = ["${var.region}a", "${var.region}b"]
-  
-  # Security configuration
-  subnet_group_name          = aws_elasticache_subnet_group.redis_subnet_group.name
-  security_group_ids         = [aws_security_group.private_db.id]
-  at_rest_encryption_enabled = true
-  transit_encryption_enabled = true
-  auth_token                 = random_password.redis_auth_token.result
-  
-  # Backup configuration
-  snapshot_retention_limit   = 1
-  snapshot_window           = "16:00-17:00"
-  final_snapshot_identifier = "dbs-elasticache-ecommerce-cluster-final-snapshot"
-  
-  # Maintenance
-  maintenance_window        = "sun:05:00-sun:06:00"
-  auto_minor_version_upgrade = true
-  
-  tags = {
-    Name = "dbs-elasticache-ecommerce-cluster"
-    Environment = "production"
-  }
-}
-
-resource "random_password" "redis_auth_token" {
-  length  = 32
-  special = false
-}
-
-# Note: AWS Backup does not support ElastiCache
-# ElastiCache Redis uses native backup features:
-# - snapshot_retention_limit = 1 (configured above)
-# - snapshot_window = "16:00-17:00" (configured above)
-# - final_snapshot_identifier for cluster termination backup
-
-# Redis Outputs
-output "redis_primary_endpoint" {
-  value = aws_elasticache_replication_group.redis_cluster.primary_endpoint_address
-}
-
-output "redis_reader_endpoint" {
-  value = aws_elasticache_replication_group.redis_cluster.reader_endpoint_address
-}
 
 # Private Hosted Zone for example.com
 resource "aws_route53_zone" "private" {
