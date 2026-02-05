@@ -199,7 +199,7 @@ resource "aws_route_table_association" "public_facing_1b" {
 # Add a second private subnet in us-east-1b for high availability
 resource "aws_subnet" "private_db_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.128/27"
+  cidr_block              = "10.114.147.192/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
