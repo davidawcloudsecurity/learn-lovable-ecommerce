@@ -973,17 +973,6 @@ resource "aws_cloudfront_origin_access_identity" "s3_oai" {
 
 
 
-# CloudFront Distribution with both ALB and S3 origins
-resource "aws_cloudfront_distribution" "web_distribution" {
-  origin {
-    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.product_images.bucket}"
-
-    s3_origin_config {
-      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
-    }
-  }
-}
 # CloudFront Distribution with NLB origin
 resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
