@@ -56,7 +56,7 @@ provider "aws" {
 
 # VPC
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/24"
+  cidr_block           = "10.114.146.0/23"
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -68,7 +68,7 @@ resource "aws_vpc" "main" {
 # Subnets
 resource "aws_subnet" "public_facing_1a" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.64/28"
+  cidr_block              = "10.114.146.0/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = true
 
@@ -79,7 +79,7 @@ resource "aws_subnet" "public_facing_1a" {
 
 resource "aws_subnet" "public_facing_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.80/28"
+  cidr_block              = "10.114.147.0/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = true
 
@@ -90,7 +90,7 @@ resource "aws_subnet" "public_facing_1b" {
 
 resource "aws_subnet" "private_app" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.32/28"
+  cidr_block              = "10.114.146.128/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = false
 
@@ -101,7 +101,7 @@ resource "aws_subnet" "private_app" {
 
 resource "aws_subnet" "private_app_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.48/28"
+  cidr_block              = "10.114.147.128/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
@@ -112,7 +112,7 @@ resource "aws_subnet" "private_app_1b" {
 
 resource "aws_subnet" "private_db" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.96/27"
+  cidr_block              = "10.114.146.192/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = false
 
