@@ -1,7 +1,6 @@
 # AWS Backup Configuration
 resource "aws_backup_vault" "main" {
-  name        = "main-backup-vault"
-  kms_key_arn = aws_kms_key.documentdb_key.arn
+  name = "main-backup-vault"
 }
 
 resource "aws_backup_vault_policy" "main" {
