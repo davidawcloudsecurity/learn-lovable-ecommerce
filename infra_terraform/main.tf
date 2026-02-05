@@ -957,11 +957,13 @@ resource "aws_lb_listener" "https" {
 resource "aws_lb_target_group_attachment" "alb_80" {
   target_group_arn = aws_lb_target_group.alb_port_80.arn
   target_id        = aws_lb.example.arn
+  port             = 80
 }
 
 resource "aws_lb_target_group_attachment" "alb_443" {
   target_group_arn = aws_lb_target_group.alb_port_443.arn
   target_id        = aws_lb.example.arn
+  port             = 443
 }
 
 
