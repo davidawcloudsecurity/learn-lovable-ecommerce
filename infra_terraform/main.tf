@@ -953,6 +953,132 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+# ALB Listener Rules
+resource "aws_lb_listener_rule" "host_redirect" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 1
+
+  action {
+    type = "redirect"
+    redirect {
+      protocol    = "HTTPS"
+      port        = "443"
+      host        = "www.example.com"
+      path        = "/#{path}"
+      query       = "#{query}"
+      status_code = "HTTP_301"
+    }
+  }
+
+  condition {
+    host_header {
+      values = ["www.example.com", "example.com", "example.org"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "block_config" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 9
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      status_code  = "403"
+      content_type = "text/html"
+      message_body = "Forbidden"
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/id/ver/conf", "/id/ver/conf/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "swag_fire" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/swg/*", "/swg", "/fire", "/fire/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "api_net" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 11
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api", "/api/*", "/net", "/net/*"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "version_signin" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 12
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/ver", "/sign", "/sign/*"]
+    }
+  }
+}
+
+# Add a second target group for id service
+resource "aws_lb_target_group" "id" {
+  name        = "id-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+  health_check {
+    enabled             = true
+    path                = "/"
+    interval            = 36
+    timeout             = 35
+    unhealthy_threshold = 2
+    healthy_threshold   = 5
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_listener_rule" "id_service" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 15
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.id.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/id", "/id/*"]
+    }
+  }
+}
+
 # NLB target group attachments (ALB as target)
 resource "aws_lb_target_group_attachment" "alb_80" {
   target_group_arn = aws_lb_target_group.alb_port_80.arn
@@ -1334,6 +1460,7 @@ output "security_group_private_db" {
 output "target_groups" {
   value = {
     frontend     = aws_lb_target_group.frontend.arn
+    id           = aws_lb_target_group.id.arn
     alb_port_80  = aws_lb_target_group.alb_port_80.arn
     alb_port_443 = aws_lb_target_group.alb_port_443.arn
   }
