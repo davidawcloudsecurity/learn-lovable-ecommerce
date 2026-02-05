@@ -1045,6 +1045,26 @@ resource "aws_lb_listener_rule" "version_signin" {
   }
 }
 
+resource "aws_lb_listener_rule" "block_config_duplicate" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 14
+  
+  action {
+    type = "fixed-response"
+    fixed_response {
+      status_code  = "403"
+      content_type = "text/html"
+      message_body = "Forbidden"
+    }
+  }
+  
+  condition {
+    path_pattern {
+      values = ["/id/ver/conf", "/id/ver/conf/*"]
+    }
+  }
+}
+
 # Add a second target group for id service
 resource "aws_lb_target_group" "id" {
   name        = "id-tg"
