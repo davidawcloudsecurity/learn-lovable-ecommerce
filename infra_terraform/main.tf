@@ -983,7 +983,7 @@ resource "aws_cloudfront_distribution" "web_distribution" {
       origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
     }
   }
-
+}
 # CloudFront Distribution with NLB origin
 resource "aws_cloudfront_distribution" "web_distribution" {
   origin {
