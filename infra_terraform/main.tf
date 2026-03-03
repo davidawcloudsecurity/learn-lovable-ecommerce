@@ -624,11 +624,8 @@ resource "aws_autoscaling_group" "mysql" {
 }
 */
 resource "aws_s3_bucket" "product_images" {
-  bucket = "learn-lovable-product-images-${random_id.suffix.hex}" # Use unique suffix to avoid bucket name conflicts
-
-# ✅ This will automatically delete all objects when destroying the bucket
+  bucket = "learn-lovable-product-images-${random_id.suffix.hex}"
   force_destroy = true
-
   tags = {
     Name        = "Product Images"
     Environment = "production"
@@ -639,17 +636,14 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# Revised public access block: Block all public access
 resource "aws_s3_bucket_public_access_block" "public_access" {
   bucket = aws_s3_bucket.product_images.id
-
-  block_public_acls       = true   # Block public ACLs
-  block_public_policy     = true   # Block public bucket policies
-  ignore_public_acls      = true   # Ignore public ACLs
-  restrict_public_buckets = true   # Block public policies
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-# Bucket policy remains unchanged (uses policy, not ACLs)
 resource "aws_s3_bucket_policy" "cloudfront_access" {
   bucket = aws_s3_bucket.product_images.id
   policy = jsonencode({
@@ -811,7 +805,7 @@ resource "aws_wafv2_web_acl_association" "alb_waf" {
   web_acl_arn  = aws_wafv2_web_acl.alb_waf.arn
 }
 
-# ALB (now internal, behind NLB)
+# ALB
 resource "aws_lb" "example" {
   name               = "example-alb"
   internal           = true
@@ -1121,87 +1115,56 @@ resource "aws_cloudfront_origin_access_identity" "s3_oai" {
 
 
 
-# CloudFront Distribution with NLB origin
+# CloudFront Distribution
 resource "aws_cloudfront_distribution" "web_distribution" {
+  # S3 origin for static assets
   origin {
     domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
     origin_id   = "S3-${aws_s3_bucket.product_images.bucket}"
-
     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
     }
   }
 
+  # ALB origin for dynamic content
   origin {
-    domain_name = aws_lb.nlb.dns_name
-    origin_id   = "NetworkLB-${aws_lb.nlb.name}"
-
+    domain_name = aws_lb.example.dns_name
+    origin_id   = "ALB-${aws_lb.example.name}"
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "CloudFront distribution for web application and static assets"
-  default_root_object = "index.html"
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "ecommerce application"
+  price_class     = "PriceClass_All"
 
-  aliases = [] # Add your custom domain here if you have one
-
-  # Default behavior routes to S3
+  # Default behavior routes to S3 for static content
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.product_images.bucket}"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
-    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # Managed-CORS-S3Origin
-/*
-    forwarded_values {
-      query_string = false
-      headers      = ["Origin"]
-
-      cookies {
-        forward = "none"
-      }
-    }
-*/
-    viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-/*    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
-    compress               = true
-*/
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "S3-${aws_s3_bucket.product_images.bucket}"
+    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
   }
 
-/*
   # API routes to ALB
   ordered_cache_behavior {
-    path_pattern     = "/api/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "ALB-${aws_lb.example.name}"
-    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
-    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
-
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]
-
-      cookies {
-        forward = "all"
-      }
-    }
-    viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-    min_ttl                = 0
-    default_ttl            = 0 # No caching for API by default
-    max_ttl                = 0
-
+    path_pattern           = "/api/*"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "ALB-${aws_lb.example.name}"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
   }
-*/
-  price_class = "PriceClass_100"
 
   restrictions {
     geo_restriction {
@@ -1210,15 +1173,54 @@ resource "aws_cloudfront_distribution" "web_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
-    # Uncomment if using custom domain:
-    # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
-    # ssl_support_method = "sni-only"
+    acm_certificate_arn      = trimspace(data.local_file.cert_arn.content)
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
+
+  web_acl_id = aws_wafv2_web_acl.cloudfront_waf.arn
 
   depends_on = [
     aws_s3_bucket_policy.cloudfront_access
   ]
+}
+
+# WAF for CloudFront
+resource "aws_wafv2_web_acl" "cloudfront_waf" {
+  name  = "waf-ecommerce-cloudfront"
+  scope = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "RateLimitRule"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "RateLimitRule"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "waf-ecommerce-cloudfront"
+    sampled_requests_enabled   = true
+  }
 }
 
 /* remove local instance
@@ -1432,7 +1434,6 @@ EOF
   }
 }
 
-# Outputs
 # Outputs
 output "network_lb_dns_name" {
   value = aws_lb.nlb.dns_name
