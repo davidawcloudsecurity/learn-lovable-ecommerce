@@ -97,8 +97,8 @@ resource "aws_db_instance" "sqlserver" {
   option_group_name   = aws_db_option_group.sqlserver_backup_restore.name
   
   # Security and access (matching production)
-  deletion_protection = true
-  skip_final_snapshot = false
+  deletion_protection = false
+  skip_final_snapshot = true
   copy_tags_to_snapshot = true
   iam_database_authentication_enabled = false
   
