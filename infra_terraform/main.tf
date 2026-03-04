@@ -1273,7 +1273,7 @@ resource "aws_lb_listener_rule" "ct" {
 
 # WAF for CloudFront
 resource "aws_wafv2_web_acl" "cloudfront_waf" {
-  name  = "waf-ecommerce-cloudfront"
+  name  = "waf-ecommerce-cloudfront-${random_id.suffix.hex}"
   scope = "CLOUDFRONT"
 
   default_action {
@@ -1816,94 +1816,7 @@ output "target_groups" {
   }
 }
 
-# VPC Endpoint for CloudWatch Logs
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "vpc-endpoints-sg"
-  description = "Security group for VPC endpoints"
-  vpc_id      = aws_vpc.main.id
 
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.main.cidr_block]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "vpc-endpoints-sg"
-  }
-}
-
-resource "aws_vpc_endpoint" "cloudwatch_logs" {
-  vpc_id             = aws_vpc.main.id
-  service_name       = "com.amazonaws.${var.region}.logs"
-  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  vpc_endpoint_type  = "Interface"
-
-  tags = {
-    Name = "cloudwatch-logs-endpoint"
-  }
-}
-
-# Secrets Manager VPC Endpoint
-resource "aws_vpc_endpoint" "secretsmanager" {
-  vpc_id             = aws_vpc.main.id
-  service_name       = "com.amazonaws.${var.region}.secretsmanager"
-  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  vpc_endpoint_type  = "Interface"
-
-  tags = {
-    Name = "secretsmanager-endpoint"
-  }
-}
-
-# ECR VPC Endpoints
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id             = aws_vpc.main.id
-  service_name       = "com.amazonaws.${var.region}.ecr.dkr"
-  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  vpc_endpoint_type  = "Interface"
-
-  tags = {
-    Name = "ecr-dkr-endpoint"
-  }
-}
-
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id             = aws_vpc.main.id
-  service_name       = "com.amazonaws.${var.region}.ecr.api"
-  subnet_ids         = [aws_subnet.private_app.id, aws_subnet.private_app_1b.id]
-  security_group_ids = [aws_security_group.vpc_endpoints.id]
-  vpc_endpoint_type  = "Interface"
-
-  tags = {
-    Name = "ecr-api-endpoint"
-  }
-}
-
-# S3 Gateway Endpoint for internet access (like client)
-resource "aws_vpc_endpoint" "s3_gateway" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.region}.s3"
-  route_table_ids = [
-    aws_route_table.private_app.id,
-    aws_route_table.private_db.id
-  ]
-
-  tags = {
-    Name = "s3-gateway-endpoint"
-  }
-}
 
 # AWS Backup resources moved to backup.tf
 
