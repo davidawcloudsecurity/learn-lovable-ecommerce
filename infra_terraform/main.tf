@@ -494,7 +494,7 @@ npm install dotenv
 npm install @vendia/serverless-express
 
 # If needed, strip the port from the endpoint
-RDS_ENDPOINT="${aws_db_instance.postgres.endpoint}"
+RDS_ENDPOINT="${aws_db_instance.sqlserver.endpoint}"
 RDS_ENDPOINT=$(echo "$RDS_ENDPOINT" | cut -d: -f1)
 
 # Create .env file
