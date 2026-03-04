@@ -1271,6 +1271,44 @@ resource "aws_lb_listener_rule" "ct" {
   }
 }
 
+# WAF for CloudFront
+resource "aws_wafv2_web_acl" "cloudfront_waf" {
+  name  = "waf-ecommerce-cloudfront"
+  scope = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "RateLimitRule"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "RateLimitRule"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "waf-ecommerce-cloudfront"
+    sampled_requests_enabled   = true
+  }
+}
+
 # CloudFront Origin Access Identity for S3
 resource "aws_cloudfront_origin_access_identity" "s3_oai" {
   comment = "OAI for ${aws_s3_bucket.product_images.bucket}"
@@ -1278,87 +1316,218 @@ resource "aws_cloudfront_origin_access_identity" "s3_oai" {
 
 
 
-# CloudFront Distribution with both ALB and S3 origins
+# CloudFront Distribution with 8 origins and 11 cache behaviors
 resource "aws_cloudfront_distribution" "web_distribution" {
+  # Origin 1: Widget content
   origin {
     domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
-    origin_id   = "S3-${aws_s3_bucket.product_images.bucket}"
-
+    origin_id   = "s3-ecommerce-widget"
     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
     }
   }
 
+  # Origin 2: Main app content
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-app"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  # Origin 3: Ticket/booking content
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-booking"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  # Origin 4: Maintenance pages
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-maintenance"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  # Origin 5: Wrapper/layout content
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-wrapper"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
+
+  # Origin 6: ALB for dynamic content
   origin {
     domain_name = aws_lb.example.dns_name
-    origin_id   = "ALB-${aws_lb.example.name}"
-
+    origin_id   = aws_lb.example.dns_name
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only"
+      origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
-  enabled             = true
-  is_ipv6_enabled     = true
-  comment             = "CloudFront distribution for web application and static assets"
-  default_root_object = "index.html"
+  # Origin 7: Product builds/assets
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-builds"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
 
-  aliases = [] # Add your custom domain here if you have one
+  # Origin 8: File storage
+  origin {
+    domain_name = aws_s3_bucket.product_images.bucket_regional_domain_name
+    origin_id   = "s3-ecommerce-files"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.s3_oai.cloudfront_access_identity_path
+    }
+  }
 
-  # Default behavior routes to S3
+  enabled         = true
+  is_ipv6_enabled = true
+  comment         = "ecommerce application"
+  price_class     = "PriceClass_All"
+
+  # Default behavior routes to ALB
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-${aws_s3_bucket.product_images.bucket}"
-    cache_policy_id        = "658327ea-f89d-4fab-a63d-7e88639e58f6" # Managed-CachingOptimized
-    origin_request_policy_id = "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf" # Managed-CORS-S3Origin
-/*
-    forwarded_values {
-      query_string = false
-      headers      = ["Origin"]
-
-      cookies {
-        forward = "none"
-      }
-    }
-*/
-    viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-/*    min_ttl                = 0
-    default_ttl            = 3600
-    max_ttl                = 86400
-    compress               = true
-*/
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = aws_lb.example.dns_name
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
   }
 
-/*
-  # API routes to ALB
+  # Cache behavior 1: Widget components
   ordered_cache_behavior {
-    path_pattern     = "/api/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "ALB-${aws_lb.example.name}"
-    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
-    origin_request_policy_id = "216adef6-5c7f-47e4-b989-5492eafa07d3" # Managed-AllViewer
-
-    forwarded_values {
-      query_string = true
-      headers      = ["*"]
-
-      cookies {
-        forward = "all"
-      }
-    }
-    viewer_protocol_policy = "allow-all" # Changed to allow both HTTP and HTTPS
-    min_ttl                = 0
-    default_ttl            = 0 # No caching for API by default
-    max_ttl                = 0
-
+    path_pattern           = "/components*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-wrapper"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
   }
-*/
-  price_class = "PriceClass_100"
+
+  # Cache behavior 2: Chat/support
+  ordered_cache_behavior {
+    path_pattern           = "/chat*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-widget"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 3: Shopping cart/checkout
+  ordered_cache_behavior {
+    path_pattern           = "/shop/checkout*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-booking"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 4: JavaScript/CSS assets
+  ordered_cache_behavior {
+    path_pattern           = "/assets*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-app"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 5: Internationalization
+  ordered_cache_behavior {
+    path_pattern           = "/i18n*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-app"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 6: File downloads
+  ordered_cache_behavior {
+    path_pattern           = "/downloads/*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-files"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 7: Media content
+  ordered_cache_behavior {
+    path_pattern           = "/media/*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-files"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 8: React/Vue apps
+  ordered_cache_behavior {
+    path_pattern           = "/spa*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-app"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 9: Product catalog builds
+  ordered_cache_behavior {
+    path_pattern           = "/catalog/builds/*"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-builds"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 10: Root path
+  ordered_cache_behavior {
+    path_pattern           = "/"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = aws_lb.example.dns_name
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
+
+  # Cache behavior 11: Catch-all
+  ordered_cache_behavior {
+    path_pattern           = "/*"
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods         = ["GET", "HEAD"]
+    target_origin_id       = "s3-ecommerce-app"
+    cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+    viewer_protocol_policy = "redirect-to-https"
+    compress              = true
+  }
 
   restrictions {
     geo_restriction {
@@ -1367,11 +1536,12 @@ resource "aws_cloudfront_distribution" "web_distribution" {
   }
 
   viewer_certificate {
-    cloudfront_default_certificate = true
-    # Uncomment if using custom domain:
-    # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
-    # ssl_support_method = "sni-only"
+    acm_certificate_arn      = trimspace(data.local_file.cert_arn.content)
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
+
+  web_acl_id = aws_wafv2_web_acl.cloudfront_waf.arn
 
   depends_on = [
     aws_s3_bucket_policy.cloudfront_access
