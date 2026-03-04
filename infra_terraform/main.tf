@@ -844,13 +844,11 @@ resource "aws_lb_target_group" "alb_port_80" {
   target_type = "alb"
   health_check {
     enabled             = true
-    path                = "/"
     interval            = 30
-    timeout             = 6
+    timeout             = 10
     unhealthy_threshold = 3
     healthy_threshold   = 3
-    matcher             = "200-399"
-    protocol            = "HTTP"
+    protocol            = "TCP"
   }
 }
 
@@ -862,13 +860,11 @@ resource "aws_lb_target_group" "alb_port_443" {
   target_type = "alb"
   health_check {
     enabled             = true
-    path                = "/"
     interval            = 30
     timeout             = 10
     unhealthy_threshold = 3
     healthy_threshold   = 3
-    matcher             = "200-399"
-    protocol            = "HTTPS"
+    protocol            = "TCP"
   }
 }
 
@@ -1203,7 +1199,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = aws_lb.example.dns_name
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "f1986529-a6cf-42db-b5ed-a04413493488"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1215,7 +1210,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-wrapper"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1227,7 +1221,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-widget"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1239,7 +1232,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-booking"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1251,7 +1243,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-app"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1263,7 +1254,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-app"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1297,7 +1287,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-app"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1309,7 +1298,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-builds"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "c48e17ea-26d9-4b32-b384-20d6d17d4159"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1321,7 +1309,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = aws_lb.example.dns_name
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "f1986529-a6cf-42db-b5ed-a04413493488"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
@@ -1333,7 +1320,6 @@ resource "aws_cloudfront_distribution" "web_distribution" {
     cached_methods         = ["GET", "HEAD"]
     target_origin_id       = "s3-ecommerce-app"
     cache_policy_id        = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
-    response_headers_policy_id = "f1986529-a6cf-42db-b5ed-a04413493488"
     viewer_protocol_policy = "redirect-to-https"
     compress              = true
   }
