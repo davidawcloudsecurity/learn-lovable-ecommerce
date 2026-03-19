@@ -56,7 +56,7 @@ provider "aws" {
 
 # VPC
 resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/24"
+  cidr_block           = "10.0.0.0/23"
   enable_dns_hostnames = true
   enable_dns_support   = true
 
@@ -68,7 +68,7 @@ resource "aws_vpc" "main" {
 # Subnets
 resource "aws_subnet" "public_facing_1a" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.64/28"
+  cidr_block              = "10.0.0.0/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = true
 
@@ -79,7 +79,7 @@ resource "aws_subnet" "public_facing_1a" {
 
 resource "aws_subnet" "public_facing_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.80/28"
+  cidr_block              = "10.0.1.0/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = true
 
@@ -90,7 +90,7 @@ resource "aws_subnet" "public_facing_1b" {
 
 resource "aws_subnet" "private_app" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.32/28"
+  cidr_block              = "10.0.0.128/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = false
 
@@ -101,7 +101,7 @@ resource "aws_subnet" "private_app" {
 
 resource "aws_subnet" "private_app_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.48/28"
+  cidr_block              = "10.0.1.128/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
@@ -112,7 +112,7 @@ resource "aws_subnet" "private_app_1b" {
 
 resource "aws_subnet" "private_db" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.96/27"
+  cidr_block              = "10.0.0.192/26"
   availability_zone       = "${var.region}a"
   map_public_ip_on_launch = false
 
@@ -199,7 +199,7 @@ resource "aws_route_table_association" "public_facing_1b" {
 # Add a second private subnet in us-east-1b for high availability
 resource "aws_subnet" "private_db_1b" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.0.128/27"
+  cidr_block              = "10.0.1.192/26"
   availability_zone       = "${var.region}b"
   map_public_ip_on_launch = false
 
@@ -408,56 +408,7 @@ resource "aws_lb" "example" {
   }
 }
 
-resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
-  port     = 8080
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-}
 
-resource "aws_lb_target_group" "backend" {
-  name     = "backend-tg"
-  port     = 3001
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
-
-  health_check {
-    enabled             = true
-    path                = "/api/search"
-    interval            = 30
-    timeout             = 5
-    unhealthy_threshold = 2
-    healthy_threshold   = 5
-    matcher             = "200-399"
-  }
-}
-
-resource "aws_lb_listener" "example" {
-  load_balancer_arn = aws_lb.example.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
-  }
-}
-
-resource "aws_lb_listener_rule" "api_rule" {
-  listener_arn = aws_lb_listener.example.arn
-  priority     = 10
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.backend.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api*"]
-    }
-  }
-}
 
 # WORDPRESS LAUNCH TEMPLATE
 resource "aws_launch_template" "wordpress" {
@@ -543,7 +494,7 @@ npm install dotenv
 npm install @vendia/serverless-express
 
 # If needed, strip the port from the endpoint
-RDS_ENDPOINT="${aws_db_instance.postgres.endpoint}"
+RDS_ENDPOINT="${aws_db_instance.sqlserver.endpoint}"
 RDS_ENDPOINT=$(echo "$RDS_ENDPOINT" | cut -d: -f1)
 
 # Create .env file
@@ -673,11 +624,8 @@ resource "aws_autoscaling_group" "mysql" {
 }
 */
 resource "aws_s3_bucket" "product_images" {
-  bucket = "learn-lovable-product-images-${random_id.suffix.hex}" # Use unique suffix to avoid bucket name conflicts
-
-  # ✅ This will automatically delete all objects when destroying the bucket
+  bucket        = "learn-lovable-product-images-${random_id.suffix.hex}"
   force_destroy = true
-
   tags = {
     Name        = "Product Images"
     Environment = "production"
@@ -688,17 +636,14 @@ resource "random_id" "suffix" {
   byte_length = 4
 }
 
-# Revised public access block: Block all public access
 resource "aws_s3_bucket_public_access_block" "public_access" {
-  bucket = aws_s3_bucket.product_images.id
-
-  block_public_acls       = true # Block public ACLs
-  block_public_policy     = true # Block public bucket policies
-  ignore_public_acls      = true # Ignore public ACLs
-  restrict_public_buckets = true # Block public policies
+  bucket                  = aws_s3_bucket.product_images.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
-# Bucket policy remains unchanged (uses policy, not ACLs)
 resource "aws_s3_bucket_policy" "cloudfront_access" {
   bucket = aws_s3_bucket.product_images.id
   policy = jsonencode({
@@ -854,7 +799,7 @@ resource "aws_wafv2_web_acl" "alb_waf" {
   }
 }
 
-# Associate WAF with ALB
+# Associate WAF with ALB (not NLB, as NLB doesn't support WAF)
 resource "aws_wafv2_web_acl_association" "alb_waf" {
   resource_arn = aws_lb.example.arn
   web_acl_arn  = aws_wafv2_web_acl.alb_waf.arn
@@ -863,9 +808,24 @@ resource "aws_wafv2_web_acl_association" "alb_waf" {
 # ALB
 resource "aws_lb" "example" {
   name               = "example-alb"
-  internal           = false
+  internal           = true
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
+  subnets = [
+    aws_subnet.private_app.id,
+    aws_subnet.private_app_1b.id
+  ]
+  enable_deletion_protection = false
+  tags = {
+    Environment = "dev"
+  }
+}
+
+# Network Load Balancer (internet-facing)
+resource "aws_lb" "nlb" {
+  name               = "example-network-lb"
+  internal           = false
+  load_balancer_type = "network"
   subnets = [
     aws_subnet.public_facing_1a.id,
     aws_subnet.public_facing_1b.id
@@ -876,6 +836,43 @@ resource "aws_lb" "example" {
   }
 }
 
+resource "aws_lb_target_group" "alb_port_80" {
+  name        = "example-alb-80"
+  port        = 80
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "alb"
+  health_check {
+    enabled             = true
+    interval            = 30
+    timeout             = 10
+    unhealthy_threshold = 3
+    healthy_threshold   = 3
+    protocol            = "HTTP"
+    path                = "/"
+    matcher             = "200-399"
+  }
+}
+
+resource "aws_lb_target_group" "alb_port_443" {
+  name        = "example-alb-443"
+  port        = 443
+  protocol    = "TCP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "alb"
+  health_check {
+    enabled             = true
+    interval            = 30
+    timeout             = 10
+    unhealthy_threshold = 3
+    healthy_threshold   = 3
+    protocol            = "HTTPS"
+    path                = "/"
+    matcher             = "200-399"
+  }
+}
+
+# ALB target group for actual application
 resource "aws_lb_target_group" "frontend" {
   name        = "frontend-tg"
   port        = 80
@@ -885,143 +882,52 @@ resource "aws_lb_target_group" "frontend" {
   health_check {
     enabled             = true
     path                = "/"
-    interval            = 30
-    timeout             = 5
+    interval            = 36
+    timeout             = 35
     unhealthy_threshold = 2
     healthy_threshold   = 5
     matcher             = "200"
   }
 }
 
-# Target Groups for 11 services
-resource "aws_lb_target_group" "sp" {
-  name        = "tg-sp"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/auth/health"
+
+
+# NLB Listeners
+resource "aws_lb_listener" "nlb_http" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = "80"
+  protocol          = "TCP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_port_80.arn
   }
 }
 
-resource "aws_lb_target_group" "tk" {
-  name        = "tg-tk"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/tkt/health"
+resource "aws_lb_listener" "nlb_https" {
+  load_balancer_arn = aws_lb.nlb.arn
+  port              = "443"
+  protocol          = "TCP"
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.alb_port_443.arn
   }
 }
 
-resource "aws_lb_target_group" "sc" {
-  name        = "tg-sc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/sched/health"
-  }
-}
-
-resource "aws_lb_target_group" "qr" {
-  name        = "tg-qr"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/qr/health"
-  }
-}
-
-resource "aws_lb_target_group" "kb" {
-  name        = "tg-kb"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/kb/health"
-  }
-}
-
-resource "aws_lb_target_group" "fc" {
-  name        = "tg-fc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/fac/health"
-  }
-}
-
-resource "aws_lb_target_group" "bp" {
-  name        = "tg-bp"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/proc/health"
-  }
-}
-
-resource "aws_lb_target_group" "bm" {
-  name        = "tg-bm"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/mgmt/health"
-  }
-}
-
-resource "aws_lb_target_group" "bc" {
-  name        = "tg-bc"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/cast/health"
-  }
-}
-
-resource "aws_lb_target_group" "ap" {
-  name        = "tg-ap"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/health"
-  }
-}
-
-resource "aws_lb_target_group" "ct" {
-  name        = "tg-ct"
-  port        = 443
-  protocol    = "HTTPS"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-  health_check {
-    path = "/ct/health"
-  }
-}
-
+# ALB Listeners
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.example.arn
   port              = "80"
   protocol          = "HTTP"
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    type = "redirect"
+    redirect {
+      protocol    = "HTTPS"
+      port        = "443"
+      host        = "#{host}"
+      path        = "/#{path}"
+      query       = "#{query}"
+      status_code = "HTTP_302"
+    }
   }
 }
 
@@ -1029,285 +935,182 @@ resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.example.arn
   port              = "443"
   protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS-1-2-2017-01"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-Res-2021-06"
   certificate_arn   = trimspace(data.local_file.cert_arn.content)
   default_action {
     type = "fixed-response"
     fixed_response {
       status_code  = "200"
-      content_type = "text/plain"
+      content_type = "text/html"
+      message_body = "<body>\n  <div style=\"width:100%; margin:0 auto;\">\n    <h1>Please connect https://www.example.com</h1>\n  </div>\n</body>\n"
     }
   }
 }
 
-# Listener Rules
-resource "aws_lb_listener_rule" "sp" {
+# ALB Listener Rules
+resource "aws_lb_listener_rule" "host_redirect" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 1
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.sp.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/auth/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
 
-resource "aws_lb_listener_rule" "tk" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 11
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.tk.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/tkt/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "sc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 12
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.sc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/sched/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "qr" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 13
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.qr.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/qr/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "kb" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 15
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.kb.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/kb/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "fc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 16
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.fc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/fac/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bp" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 18
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bp.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/proc/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bm" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 19
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bm.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/mgmt/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "bc" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 20
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bc.arn
-  }
-  condition {
-    path_pattern {
-      values = ["/cast/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
-    }
-  }
-}
-
-resource "aws_lb_listener_rule" "redirect" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 21
   action {
     type = "redirect"
     redirect {
       protocol    = "HTTPS"
       port        = "443"
-      host        = "api.example.com"
-      path        = "/proc/#{path}"
+      host        = "www.example.com"
+      path        = "/#{path}"
       query       = "#{query}"
       status_code = "HTTP_301"
     }
   }
+
+  condition {
+    host_header {
+      values = ["www.example.com", "example.com", "example.org"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "block_config" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 9
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      status_code  = "403"
+      content_type = "text/html"
+      message_body = "Forbidden"
+    }
+  }
+
   condition {
     path_pattern {
-      values = ["/link/*"]
-    }
-  }
-  condition {
-    host_header {
-      values = ["api.example.com"]
+      values = ["/id/ver/conf", "/id/ver/conf/*"]
     }
   }
 }
 
-resource "aws_lb_listener_rule" "ap" {
+resource "aws_lb_listener_rule" "swag_fire" {
   listener_arn = aws_lb_listener.https.arn
-  priority     = 22
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.ap.arn
-  }
-  condition {
-    host_header {
-      values = ["portal.example.com"]
-    }
-  }
-}
+  priority     = 10
 
-resource "aws_lb_listener_rule" "ct" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 23
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.ct.arn
+    target_group_arn = aws_lb_target_group.frontend.arn
   }
+
   condition {
     path_pattern {
-      values = ["/ct/*"]
+      values = ["/swg/*", "/swg", "/fire", "/fire/*"]
     }
   }
+}
+
+resource "aws_lb_listener_rule" "api_net" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 11
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
   condition {
-    host_header {
-      values = ["api.example.com"]
+    path_pattern {
+      values = ["/api", "/api/*", "/net", "/net/*"]
     }
   }
 }
 
-# WAF for CloudFront
-resource "aws_wafv2_web_acl" "cloudfront_waf" {
-  name  = "waf-ecommerce-cloudfront-${random_id.suffix.hex}"
-  scope = "CLOUDFRONT"
+resource "aws_lb_listener_rule" "version_signin" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 12
 
-  default_action {
-    allow {}
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
   }
 
-  rule {
-    name     = "RateLimitRule"
-    priority = 1
-
-    action {
-      block {}
+  condition {
+    path_pattern {
+      values = ["/ver", "/sign", "/sign/*"]
     }
-
-    statement {
-      rate_based_statement {
-        limit              = 2000
-        aggregate_key_type = "IP"
-      }
-    }
-
-    visibility_config {
-      cloudwatch_metrics_enabled = true
-      metric_name                = "RateLimitRule"
-      sampled_requests_enabled   = true
-    }
-  }
-
-  visibility_config {
-    cloudwatch_metrics_enabled = true
-    metric_name                = "waf-ecommerce-cloudfront"
-    sampled_requests_enabled   = true
   }
 }
+
+resource "aws_lb_listener_rule" "block_config_duplicate" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 14
+
+  action {
+    type = "fixed-response"
+    fixed_response {
+      status_code  = "403"
+      content_type = "text/html"
+      message_body = "Forbidden"
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/id/ver/conf", "/id/ver/conf/*"]
+    }
+  }
+}
+
+# Add a second target group for id service
+resource "aws_lb_target_group" "id" {
+  name        = "id-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+  health_check {
+    enabled             = true
+    path                = "/"
+    interval            = 36
+    timeout             = 35
+    unhealthy_threshold = 2
+    healthy_threshold   = 5
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_listener_rule" "id_service" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 15
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.id.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/id", "/id/*"]
+    }
+  }
+}
+
+# NLB target group attachments (ALB as target)
+resource "aws_lb_target_group_attachment" "alb_80" {
+  target_group_arn = aws_lb_target_group.alb_port_80.arn
+  target_id        = aws_lb.example.arn
+  port             = 80
+
+  depends_on = [aws_lb_listener.http]
+}
+
+resource "aws_lb_target_group_attachment" "alb_443" {
+  target_group_arn = aws_lb_target_group.alb_port_443.arn
+  target_id        = aws_lb.example.arn
+  port             = 443
+
+  depends_on = [aws_lb_listener.https]
+}
+
+
 
 # CloudFront Origin Access Identity for S3
 resource "aws_cloudfront_origin_access_identity" "s3_oai" {
@@ -1548,6 +1351,44 @@ resource "aws_cloudfront_distribution" "web_distribution" {
   ]
 }
 
+# WAF for CloudFront
+resource "aws_wafv2_web_acl" "cloudfront_waf" {
+  name  = "waf-ecommerce-cloudfront"
+  scope = "CLOUDFRONT"
+
+  default_action {
+    allow {}
+  }
+
+  rule {
+    name     = "RateLimitRule"
+    priority = 1
+
+    action {
+      block {}
+    }
+
+    statement {
+      rate_based_statement {
+        limit              = 2000
+        aggregate_key_type = "IP"
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "RateLimitRule"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  visibility_config {
+    cloudwatch_metrics_enabled = true
+    metric_name                = "waf-ecommerce-cloudfront"
+    sampled_requests_enabled   = true
+  }
+}
+
 /* remove local instance
 # EC2 Instances
 resource "aws_instance" "nginx" {
@@ -1760,6 +1601,11 @@ EOF
 }
 
 # Outputs
+# Outputs
+output "network_lb_dns_name" {
+  value = aws_lb.nlb.dns_name
+}
+
 output "alb_dns_name" {
   value = aws_lb.example.dns_name
 }
@@ -1801,22 +1647,16 @@ output "security_group_private_db" {
 # Target Groups
 output "target_groups" {
   value = {
-    frontend = aws_lb_target_group.frontend.arn
-    sp       = aws_lb_target_group.sp.arn
-    tk       = aws_lb_target_group.tk.arn
-    sc       = aws_lb_target_group.sc.arn
-    qr       = aws_lb_target_group.qr.arn
-    kb       = aws_lb_target_group.kb.arn
-    fc       = aws_lb_target_group.fc.arn
-    bp       = aws_lb_target_group.bp.arn
-    bm       = aws_lb_target_group.bm.arn
-    bc       = aws_lb_target_group.bc.arn
-    ap       = aws_lb_target_group.ap.arn
-    ct       = aws_lb_target_group.ct.arn
+    frontend     = aws_lb_target_group.frontend.arn
+    id           = aws_lb_target_group.id.arn
+    alb_port_80  = aws_lb_target_group.alb_port_80.arn
+    alb_port_443 = aws_lb_target_group.alb_port_443.arn
   }
 }
 
+# Removed VPC endpoints - using internet via NAT Gateway instead
 
+# All AWS services accessed via internet through NAT Gateway
 
 # AWS Backup resources moved to backup.tf
 
