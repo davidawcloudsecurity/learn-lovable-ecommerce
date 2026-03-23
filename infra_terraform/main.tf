@@ -808,12 +808,12 @@ resource "aws_wafv2_web_acl_association" "alb_waf" {
 # ALB
 resource "aws_lb" "example" {
   name               = "example-alb"
-  internal           = true
+  internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.public_facing.id]
   subnets            = [
-    aws_subnet.private_app.id,
-    aws_subnet.private_app_1b.id
+    aws_subnet.public_facing_1a.id,
+    aws_subnet.public_facing_1b.id
   ]
   enable_deletion_protection = false
   tags = {
@@ -821,14 +821,14 @@ resource "aws_lb" "example" {
   }
 }
 
-# Network Load Balancer (internet-facing)
+# Network Load Balancer (internal)
 resource "aws_lb" "nlb" {
   name               = "example-network-lb"
-  internal           = false
+  internal           = true
   load_balancer_type = "network"
   subnets            = [
-    aws_subnet.public_facing_1a.id,
-    aws_subnet.public_facing_1b.id
+    aws_subnet.private_app.id,
+    aws_subnet.private_app_1b.id
   ]
   enable_deletion_protection = false
   tags = {
