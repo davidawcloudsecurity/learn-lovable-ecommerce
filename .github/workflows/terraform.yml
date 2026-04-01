@@ -46,7 +46,7 @@ jobs:
                   echo "Found existing state, copying to working directory..."
                   cp state/terraform.tfstate /tmp/terraform.tfstate
               fi
-              git checkout ab-190
+              git checkout ab-355
               cp /tmp/terraform.tfstate .
           fi
           ls -lah
