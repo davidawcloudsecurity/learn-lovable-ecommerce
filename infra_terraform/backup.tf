@@ -21,9 +21,16 @@ resource "aws_backup_vault" "v2" {
 }
 
 resource "aws_backup_vault_lock_configuration" "v2" {
+  # Governance mode — no changeable_for_days means privileged users can still manage the lock
   backup_vault_name = aws_backup_vault.v2.name
   min_retention_days = 1
   max_retention_days = 35
+}
+
+# New active vault without governance
+resource "aws_backup_vault" "v3" {
+  name          = "ecommerce-backup-vault-no-governance"
+  force_destroy = true
 }
 
 resource "aws_backup_plan" "main" {
