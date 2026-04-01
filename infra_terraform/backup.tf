@@ -122,7 +122,7 @@ resource "null_resource" "backup_backend" {
   depends_on = [aws_backup_selection.ec2]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main.name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${aws_iam_role.backup.arn} --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main.name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle DeleteAfterDays=7 --region ${var.region}"
   }
 
   triggers = {
