@@ -2,9 +2,12 @@
 name: learn-lovable-ecommerce-apply
 
 # Controls when the action will run. Invokes the workflow on push events but only for the main branch
+#on:
+#  push:
+#    branches: [ ab-355 ]
 on:
-  push:
-    branches: [ ab-355 ]
+  workflow_dispatch:
+  
 env:
   AWS_REGION : "us-east-1" #Change to reflect your Region  
 
