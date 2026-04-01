@@ -291,6 +291,8 @@ resource "aws_db_instance" "postgres" {
   skip_final_snapshot     = true
   deletion_protection     = false
   backup_retention_period = 1
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "mon:04:30-mon:05:30"
 
   tags = { Name = "ecommerce-db" }
 }
