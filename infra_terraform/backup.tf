@@ -10,7 +10,7 @@ resource "aws_backup_vault" "main" {
 # Compliance-mode vault lock (changeable_for_days = 30 day grace period, then permanent)
 resource "aws_backup_vault_lock_configuration" "main" {
   backup_vault_name   = aws_backup_vault.main.name
-  changeable_for_days = 1
+  changeable_for_days = 3
   min_retention_days  = 1
   max_retention_days  = 35
 }
