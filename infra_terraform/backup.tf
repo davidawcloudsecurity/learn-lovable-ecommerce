@@ -7,11 +7,12 @@ resource "aws_backup_vault" "main" {
   force_destroy = true
 }
 
-# Governance-mode vault lock (no changeable_for_days = no compliance mode)
+# Compliance-mode vault lock (changeable_for_days = 30 day grace period, then permanent)
 resource "aws_backup_vault_lock_configuration" "main" {
-  backup_vault_name = aws_backup_vault.main.name
-  min_retention_days = 1
-  max_retention_days = 35
+  backup_vault_name   = aws_backup_vault.main.name
+  changeable_for_days = 30
+  min_retention_days  = 1
+  max_retention_days  = 35
 }
 
 # New active vault
