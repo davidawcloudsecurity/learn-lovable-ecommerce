@@ -71,13 +71,62 @@ module "backup" {
 }
 
 # ============================================================
-# On-demand backup on terraform apply
+# AWS Backup — new vault (-2) with 35-day daily retention
+# ============================================================
+module "backup_2" {
+  source = "./modules/aws-backup"
+
+  name         = "main-2"
+  agency_code  = "demo"
+  environment  = "dev"
+  project_code = "ecommerce"
+
+  kms_key_arn = null
+
+  enable_vault_policy = true
+
+  # Vault lock with 35-day minimum to allow shorter daily retention
+  enable_vault_lock              = true
+  vault_lock_changeable_for_days = 30
+  vault_lock_min_retention_days  = 15
+  vault_lock_max_retention_days  = 2555
+
+  backup_rules = [
+    {
+      rule_name                = "DailyBackups"
+      schedule                 = "cron(0 2 ? * * *)"
+      enable_continuous_backup = false
+      lifecycle = {
+        delete_after = 15
+      }
+    }
+  ]
+
+  backup_selections = [
+    {
+      name = "ec2-instances"
+      resources = [
+        aws_instance.frontend.arn,
+        aws_instance.backend.arn,
+      ]
+    },
+    {
+      name = "rds-instances"
+      resources = [
+        aws_db_instance.postgres.arn,
+      ]
+    }
+  ]
+}
+
+# ============================================================
+# On-demand backup on terraform apply (targets -2 vault)
 # ============================================================
 resource "null_resource" "backup_rds" {
-  depends_on = [module.backup]
+  depends_on = [module.backup_2]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":35}' --region ${var.region}"
   }
 
   triggers = {
@@ -86,10 +135,10 @@ resource "null_resource" "backup_rds" {
 }
 
 resource "null_resource" "backup_frontend" {
-  depends_on = [module.backup]
+  depends_on = [module.backup_2]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":35}' --region ${var.region}"
   }
 
   triggers = {
@@ -98,10 +147,10 @@ resource "null_resource" "backup_frontend" {
 }
 
 resource "null_resource" "backup_backend" {
-  depends_on = [module.backup]
+  depends_on = [module.backup_2]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":35}' --region ${var.region}"
   }
 
   triggers = {
