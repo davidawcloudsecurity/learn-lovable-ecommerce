@@ -158,6 +158,12 @@ variable "backup_selections" {
   default = []
 }
 
+variable "disable_default_selection" {
+  description = "When true, skip the default tag-based backup selection even if backup_selections is empty"
+  type        = bool
+  default     = false
+}
+
 #----------------------------------------------------------------------------
 # IAM Configuration
 #----------------------------------------------------------------------------
