@@ -21,53 +21,9 @@ module "backup" {
   vault_lock_min_retention_days  = 90   # Minimum 90-day retention
   vault_lock_max_retention_days  = 2555 # Maximum 7-year retention
 
-  # Backup rules — prod pattern: daily + weekly + monthly with cold storage tiering
-  backup_rules = [
-    {
-      rule_name                = "DailyBackups"
-      schedule                 = "cron(0 2 ? * * *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 30  # Move to cold storage after 30 days
-        delete_after       = 120 # Keep for 120 days total
-      }
-    },
-    {
-      rule_name                = "WeeklyBackups"
-      schedule                 = "cron(0 3 ? * SUN *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 90  # Move to cold storage after 90 days
-        delete_after       = 365 # Keep for 1 year
-      }
-    },
-    {
-      rule_name                = "MonthlyBackups"
-      schedule                 = "cron(0 4 1 * ? *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 90   # Move to cold storage after 90 days
-        delete_after       = 2555 # Keep for 7 years (compliance)
-      }
-    }
-  ]
-
-  # Explicit backup selections targeting EC2 + RDS by ARN
-  backup_selections = [
-    {
-      name = "ec2-instances"
-      resources = [
-        aws_instance.frontend.arn,
-        aws_instance.backend.arn,
-      ]
-    },
-    {
-      name = "rds-instances"
-      resources = [
-        aws_db_instance.postgres.arn,
-      ]
-    }
-  ]
+  # No backup rules — vault is dormant
+  backup_rules      = []
+  backup_selections = []
 }
 
 # ============================================================
