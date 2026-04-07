@@ -140,8 +140,8 @@ locals {
     }
   ])
 
-  # Use provided selections or default
-  backup_selections = length(var.backup_selections) > 0 ? var.backup_selections : local.default_backup_selections
+  # Use provided selections or default (skip default when disable_default_selection is true)
+  backup_selections = var.disable_default_selection ? var.backup_selections : (length(var.backup_selections) > 0 ? var.backup_selections : local.default_backup_selections)
 }
 
 resource "aws_backup_selection" "this" {
