@@ -51,7 +51,8 @@ module "backup" {
   ]
 
   # No resources selected — plan exists but backs up nothing
-  backup_selections = []
+  disable_default_selection = true
+  backup_selections         = []
 }
 
 # ============================================================
