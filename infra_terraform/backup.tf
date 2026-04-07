@@ -77,7 +77,7 @@ resource "null_resource" "backup_rds" {
   depends_on = [module.backup]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":7}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
   }
 
   triggers = {
@@ -89,7 +89,7 @@ resource "null_resource" "backup_frontend" {
   depends_on = [module.backup]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":7}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
   }
 
   triggers = {
@@ -101,7 +101,7 @@ resource "null_resource" "backup_backend" {
   depends_on = [module.backup]
 
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":7}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${module.backup.backup_vault_name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${module.backup.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":90}' --region ${var.region}"
   }
 
   triggers = {
