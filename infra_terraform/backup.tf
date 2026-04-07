@@ -1,38 +1,5 @@
 # ============================================================
-# AWS Backup — using modular approach from gen-ai-platform-infra
-# ============================================================
-
-# Existing standalone vaults (kept for backward compatibility with locked vaults)
-resource "aws_backup_vault" "main" {
-  name          = "ecommerce-backup-vault"
-  force_destroy = true
-}
-
-resource "aws_backup_vault_lock_configuration" "main" {
-  backup_vault_name   = aws_backup_vault.main.name
-  changeable_for_days = 3
-  min_retention_days  = 1
-  max_retention_days  = 35
-}
-
-resource "aws_backup_vault" "v2" {
-  name          = "ecommerce-backup-vault-2"
-  force_destroy = true
-}
-
-resource "aws_backup_vault_lock_configuration" "v2" {
-  backup_vault_name  = aws_backup_vault.v2.name
-  min_retention_days = 1
-  max_retention_days = 35
-}
-
-resource "aws_backup_vault" "v3" {
-  name          = "ecommerce-backup-vault-no-governance"
-  force_destroy = true
-}
-
-# ============================================================
-# Modular AWS Backup (duplicated from gen-ai-platform-infra)
+# AWS Backup — modular approach from gen-ai-platform-infra (PRD)
 # ============================================================
 module "backup" {
   source = "./modules/aws-backup"
@@ -45,29 +12,42 @@ module "backup" {
   # No KMS key — set to null for testing
   kms_key_arn = null
 
-  # Disable vault policy for testing (allows deleting recovery points)
-  enable_vault_policy = false
+  # Vault policy — prevent backup deletion (prod pattern)
+  enable_vault_policy = true
 
-  # Backup rules — daily + weekly like the original inline plan
+  # Vault lock — WORM compliance (prod pattern)
+  enable_vault_lock              = true
+  vault_lock_changeable_for_days = 30     # 3-day grace period to modify lock
+  vault_lock_min_retention_days  = 90   # Minimum 90-day retention
+  vault_lock_max_retention_days  = 2555 # Maximum 7-year retention
+
+  # Backup rules — prod pattern: daily + weekly + monthly with cold storage tiering
   backup_rules = [
     {
-      rule_name                = "DailyBackup"
-      schedule                 = "cron(0 5 ? * * *)"
+      rule_name                = "DailyBackups"
+      schedule                 = "cron(0 2 ? * * *)"
       enable_continuous_backup = false
-      start_window             = 60
-      completion_window        = 180
       lifecycle = {
-        delete_after = 7
+        cold_storage_after = 30  # Move to cold storage after 30 days
+        delete_after       = 120 # Keep for 120 days total
       }
     },
     {
-      rule_name                = "WeeklyBackup"
-      schedule                 = "cron(0 5 ? * SUN *)"
+      rule_name                = "WeeklyBackups"
+      schedule                 = "cron(0 3 ? * SUN *)"
       enable_continuous_backup = false
-      start_window             = 60
-      completion_window        = 180
       lifecycle = {
-        delete_after = 30
+        cold_storage_after = 90  # Move to cold storage after 90 days
+        delete_after       = 365 # Keep for 1 year
+      }
+    },
+    {
+      rule_name                = "MonthlyBackups"
+      schedule                 = "cron(0 4 1 * ? *)"
+      enable_continuous_backup = false
+      lifecycle = {
+        cold_storage_after = 90   # Move to cold storage after 90 days
+        delete_after       = 2555 # Keep for 7 years (compliance)
       }
     }
   ]
