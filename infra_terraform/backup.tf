@@ -36,21 +36,30 @@ resource "aws_backup_plan" "main" {
     rule_name         = "DailyBackups"
     target_vault_name = aws_backup_vault.main.name
     schedule          = "cron(0 2 ? * * *)"
-    lifecycle { cold_storage_after = 30; delete_after = 120 }
+    lifecycle {
+      cold_storage_after = 30
+      delete_after       = 120
+    }
   }
 
   rule {
     rule_name         = "WeeklyBackups"
     target_vault_name = aws_backup_vault.main.name
     schedule          = "cron(0 3 ? * SUN *)"
-    lifecycle { cold_storage_after = 90; delete_after = 365 }
+    lifecycle {
+      cold_storage_after = 90
+      delete_after       = 365
+    }
   }
 
   rule {
     rule_name         = "MonthlyBackups"
     target_vault_name = aws_backup_vault.main.name
     schedule          = "cron(0 4 1 * ? *)"
-    lifecycle { cold_storage_after = 90; delete_after = 2555 }
+    lifecycle {
+      cold_storage_after = 90
+      delete_after       = 2555
+    }
   }
 }
 
