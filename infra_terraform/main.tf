@@ -475,15 +475,51 @@ resource "aws_cloudfront_origin_access_identity" "s3" {
 }
 
 resource "aws_s3_bucket_policy" "assets" {
-  bucket = aws_s3_bucket.assets.id
+  bucket     = aws_s3_bucket.assets.id
+  depends_on = [aws_iam_role.backup]
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { AWS = aws_cloudfront_origin_access_identity.s3.iam_arn }
-      Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.assets.arn}/*"
-    }]
+    Statement = [
+      {
+        Sid       = "AllowCloudFront"
+        Effect    = "Allow"
+        Principal = { AWS = aws_cloudfront_origin_access_identity.s3.iam_arn }
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.assets.arn}/*"
+      },
+      {
+        Sid       = "AWSBackupPermissions"
+        Effect    = "Allow"
+        Principal = { AWS = aws_iam_role.backup.arn }
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:GetObjectVersionTagging",
+          "s3:GetObjectTagging",
+          "s3:ListBucket",
+          "s3:ListBucketVersions",
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:GetBucketObjectLockConfiguration",
+          "s3:GetBucketTagging"
+        ]
+        Resource = [
+          aws_s3_bucket.assets.arn,
+          "${aws_s3_bucket.assets.arn}/*"
+        ]
+      },
+      {
+        Sid       = "AllowSSLRequestsOnly"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.assets.arn,
+          "${aws_s3_bucket.assets.arn}/*"
+        ]
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      }
+    ]
   })
 }
 
