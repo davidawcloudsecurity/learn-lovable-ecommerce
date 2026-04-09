@@ -459,6 +459,13 @@ resource "aws_s3_bucket" "assets" {
   tags          = { Name = "ecommerce-assets" }
 }
 
+resource "aws_s3_bucket_versioning" "assets" {
+  bucket = aws_s3_bucket.assets.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "assets" {
   bucket                  = aws_s3_bucket.assets.id
   block_public_acls       = true
