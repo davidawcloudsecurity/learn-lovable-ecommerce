@@ -184,10 +184,7 @@ resource "aws_backup_selection" "s3" {
   ]
 }
 
-# ============================================================
-# On-demand backup on terraform apply (targets vault 2)
-# ============================================================
-
+/*
 resource "null_resource" "backup_rds" {
   depends_on = [aws_backup_vault.main_2]
   provisioner "local-exec" {
@@ -208,6 +205,19 @@ resource "null_resource" "backup_backend" {
   depends_on = [aws_backup_vault.main_2]
   provisioner "local-exec" {
     command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main_2.name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
+  }
+  triggers = { always_run = timestamp() }
+}
+*/
+
+# ============================================================
+# On-demand backup on terraform apply (targets vault 2)
+# ============================================================
+
+resource "null_resource" "backup_s3" {
+  depends_on = [aws_backup_vault.main_2, aws_s3_bucket_policy.assets]
+  provisioner "local-exec" {
+    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main_2.name} --resource-arn ${aws_s3_bucket.assets.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
   }
   triggers = { always_run = timestamp() }
 }
