@@ -478,12 +478,26 @@ resource "aws_s3_bucket_policy" "assets" {
   bucket = aws_s3_bucket.assets.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { AWS = aws_cloudfront_origin_access_identity.s3.iam_arn }
-      Action    = "s3:GetObject"
-      Resource  = "${aws_s3_bucket.assets.arn}/*"
-    }]
+    Statement = [
+      {
+        Sid       = "AllowCloudFront"
+        Effect    = "Allow"
+        Principal = { AWS = aws_cloudfront_origin_access_identity.s3.iam_arn }
+        Action    = "s3:GetObject"
+        Resource  = "${aws_s3_bucket.assets.arn}/*"
+      },
+      {
+        Sid       = "AllowSSLRequestsOnly"
+        Effect    = "Deny"
+        Principal = "*"
+        Action    = "s3:*"
+        Resource = [
+          aws_s3_bucket.assets.arn,
+          "${aws_s3_bucket.assets.arn}/*"
+        ]
+        Condition = { Bool = { "aws:SecureTransport" = "false" } }
+      }
+    ]
   })
 }
 
