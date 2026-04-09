@@ -1,160 +1,216 @@
+data "aws_caller_identity" "current" {}
+
 # ============================================================
-# AWS Backup — original vault (Compliance locked, dormant)
-# Vault cannot be deleted due to compliance lock.
-# Plan retained, but no resources selected — no new backups.
+# AWS Backup — vault 1 (compliance locked, no selections)
 # ============================================================
-module "backup" {
-  source = "./modules/aws-backup"
 
-  name         = "main"
-  agency_code  = "demo"
-  environment  = "dev"
-  project_code = "ecommerce"
+resource "aws_backup_vault" "main" {
+  name = "bkp-vlt-ecommerce-dev-main"
+  tags = { Name = "bkp-vlt-ecommerce-dev-main" }
+}
 
-  kms_key_arn = null
+resource "aws_backup_vault_policy" "main" {
+  backup_vault_name = aws_backup_vault.main.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "backup:DeleteRecoveryPoint"
+      Resource  = "*"
+    }]
+  })
+}
 
-  enable_vault_policy = true
+resource "aws_backup_vault_lock_configuration" "main" {
+  backup_vault_name   = aws_backup_vault.main.name
+  changeable_for_days = var.backup_vault_lock_changeable_for_days
+  min_retention_days  = 90
+  max_retention_days  = var.backup_vault_lock_max_retention_days
+}
 
-  enable_vault_lock              = true
-  vault_lock_changeable_for_days = 30
-  vault_lock_min_retention_days  = 90
-  vault_lock_max_retention_days  = 2555
+resource "aws_backup_plan" "main" {
+  name = "ecommerce-dev-main-backup"
 
-  backup_rules = [
-    {
-      rule_name                = "DailyBackups"
-      schedule                 = "cron(0 2 ? * * *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 30
-        delete_after       = 120
-      }
-    },
-    {
-      rule_name                = "WeeklyBackups"
-      schedule                 = "cron(0 3 ? * SUN *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 90
-        delete_after       = 365
-      }
-    },
-    {
-      rule_name                = "MonthlyBackups"
-      schedule                 = "cron(0 4 1 * ? *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        cold_storage_after = 90
-        delete_after       = 2555
-      }
-    }
-  ]
+  rule {
+    rule_name         = "DailyBackups"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 2 ? * * *)"
+    lifecycle { cold_storage_after = 30; delete_after = 120 }
+  }
 
-  # No resources selected — plan exists but backs up nothing
-  disable_default_selection = true
-  backup_selections         = []
+  rule {
+    rule_name         = "WeeklyBackups"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 3 ? * SUN *)"
+    lifecycle { cold_storage_after = 90; delete_after = 365 }
+  }
+
+  rule {
+    rule_name         = "MonthlyBackups"
+    target_vault_name = aws_backup_vault.main.name
+    schedule          = "cron(0 4 1 * ? *)"
+    lifecycle { cold_storage_after = 90; delete_after = 2555 }
+  }
 }
 
 # ============================================================
-# AWS Backup — new vault (-2) with 35-day daily retention
+# AWS Backup — vault 2 (35-day daily, active selections)
 # ============================================================
-module "backup_2" {
-  source = "./modules/aws-backup"
 
-  name         = "main-2"
-  agency_code  = "demo"
-  environment  = "dev"
-  project_code = "ecommerce"
+resource "aws_backup_vault" "main_2" {
+  name = "bkp-vlt-ecommerce-dev-main-2"
+  tags = { Name = "bkp-vlt-ecommerce-dev-main-2" }
+}
 
-  kms_key_arn = null
+resource "aws_backup_vault_policy" "main_2" {
+  backup_vault_name = aws_backup_vault.main_2.name
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Deny"
+      Principal = "*"
+      Action    = "backup:DeleteRecoveryPoint"
+      Resource  = "*"
+    }]
+  })
+}
 
-  enable_vault_policy = true
+resource "aws_backup_vault_lock_configuration" "main_2" {
+  backup_vault_name   = aws_backup_vault.main_2.name
+  changeable_for_days = var.backup_vault_lock_changeable_for_days
+  min_retention_days  = var.backup_vault_lock_min_retention_days
+  max_retention_days  = var.backup_vault_lock_max_retention_days
+}
 
-  # Vault lock with 35-day minimum to allow shorter daily retention
-  enable_vault_lock              = true
-  vault_lock_changeable_for_days = 30
-  vault_lock_min_retention_days  = 15
-  vault_lock_max_retention_days  = 2555
+resource "aws_backup_plan" "main_2" {
+  name = "ecommerce-dev-main-2-backup"
 
-  backup_rules = [
-    {
-      rule_name                = "DailyBackups"
-      schedule                 = "cron(0 2 ? * * *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        delete_after = 15
+  rule {
+    rule_name         = "DailyBackups"
+    target_vault_name = aws_backup_vault.main_2.name
+    schedule          = "cron(0 2 ? * * *)"
+    lifecycle { delete_after = 15 }
+  }
+
+  rule {
+    rule_name         = "WeeklyBackups"
+    target_vault_name = aws_backup_vault.main_2.name
+    schedule          = "cron(0 3 ? * SUN *)"
+    lifecycle { delete_after = 35 }
+  }
+
+  rule {
+    rule_name         = "YearlyBackups"
+    target_vault_name = aws_backup_vault.main_2.name
+    schedule          = "cron(0 4 1 1 ? *)"
+    lifecycle { delete_after = 395 }
+  }
+}
+
+# ============================================================
+# IAM Role for AWS Backup (shared by both vaults)
+# ============================================================
+
+resource "aws_iam_role" "backup" {
+  name = "iam-ecommerce-dev-backup"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "backup.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+        }
       }
-    },
-    {
-      rule_name                = "WeeklyBackups"
-      schedule                 = "cron(0 3 ? * SUN *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        delete_after = 35
-      }
-    },
-    {
-      rule_name                = "YearlyBackups"
-      schedule                 = "cron(0 4 1 1 ? *)"
-      enable_continuous_backup = false
-      lifecycle = {
-        delete_after = 395
-      }
-    }
+    }]
+  })
+
+  tags = { Name = "iam-ecommerce-dev-backup" }
+}
+
+resource "aws_iam_role_policy_attachment" "backup" {
+  for_each = toset([
+    "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup",
+    "arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores",
+    "arn:aws:iam::aws:policy/AWSBackupServiceRolePolicyForS3Backup",
+    "arn:aws:iam::aws:policy/AWSBackupServiceRolePolicyForS3Restore"
+  ])
+  role       = aws_iam_role.backup.name
+  policy_arn = each.value
+}
+
+# ============================================================
+# Backup Selections (vault 2)
+# ============================================================
+
+resource "aws_backup_selection" "ec2" {
+  name         = "ec2-instances"
+  plan_id      = aws_backup_plan.main_2.id
+  iam_role_arn = aws_iam_role.backup.arn
+  resources = [
+    aws_instance.frontend.arn,
+    aws_instance.backend.arn,
   ]
+}
 
-  backup_selections = [
-    {
-      name = "ec2-instances"
-      resources = [
-        aws_instance.frontend.arn,
-        aws_instance.backend.arn,
-      ]
-    },
-    {
-      name = "rds-instances"
-      resources = [
-        aws_db_instance.postgres.arn,
-      ]
-    }
+resource "aws_backup_selection" "rds" {
+  name         = "rds-instances"
+  plan_id      = aws_backup_plan.main_2.id
+  iam_role_arn = aws_iam_role.backup.arn
+  resources = [
+    aws_db_instance.postgres.arn,
+  ]
+}
+
+resource "aws_backup_selection" "s3" {
+  name         = "s3-assets"
+  plan_id      = aws_backup_plan.main_2.id
+  iam_role_arn = aws_iam_role.backup.arn
+  resources = [
+    aws_s3_bucket.assets.arn,
   ]
 }
 
 # ============================================================
-# On-demand backup on terraform apply (targets -2 vault)
+# On-demand backup on terraform apply (targets vault 2)
 # ============================================================
+
 resource "null_resource" "backup_rds" {
-  depends_on = [module.backup_2]
-
+  depends_on = [aws_backup_vault.main_2]
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main_2.name} --resource-arn ${aws_db_instance.postgres.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
   }
-
-  triggers = {
-    always_run = timestamp()
-  }
+  triggers = { always_run = timestamp() }
 }
 
 resource "null_resource" "backup_frontend" {
-  depends_on = [module.backup_2]
-
+  depends_on = [aws_backup_vault.main_2]
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main_2.name} --resource-arn ${aws_instance.frontend.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
   }
-
-  triggers = {
-    always_run = timestamp()
-  }
+  triggers = { always_run = timestamp() }
 }
 
 resource "null_resource" "backup_backend" {
-  depends_on = [module.backup_2]
-
+  depends_on = [aws_backup_vault.main_2]
   provisioner "local-exec" {
-    command = "aws backup start-backup-job --backup-vault-name ${module.backup_2.backup_vault_name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${module.backup_2.backup_role_arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
+    command = "aws backup start-backup-job --backup-vault-name ${aws_backup_vault.main_2.name} --resource-arn ${aws_instance.backend.arn} --iam-role-arn ${aws_iam_role.backup.arn} --lifecycle '{\"DeleteAfterDays\":15}' --region ${var.region}"
   }
+  triggers = { always_run = timestamp() }
+}
 
-  triggers = {
-    always_run = timestamp()
-  }
+# ============================================================
+# Outputs
+# ============================================================
+
+output "backup_vault_name" {
+  value = aws_backup_vault.main_2.name
+}
+
+output "backup_role_arn" {
+  value = aws_iam_role.backup.arn
 }
